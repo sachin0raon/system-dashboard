@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence, type Transition } from 'framer-motion';
-import { useSystemMetrics } from './api/queries';
+import { useSystemSocket } from './api/socket';
 import { Header } from './components/Header';
 import { CpuCard } from './components/widgets/CpuCard';
 import { MemoryCard } from './components/widgets/MemoryCard';
@@ -18,7 +18,7 @@ const cardTransition = (i: number): Transition => ({
 });
 
 function App() {
-  const { data, isLoading, isError, error, isRefetching } = useSystemMetrics();
+  const { data, isLoading, isError, error, isRefetching } = useSystemSocket();
 
   return (
     <div className="min-h-screen relative overflow-x-hidden">

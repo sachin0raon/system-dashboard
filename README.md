@@ -2,14 +2,14 @@
 
 A beautiful, modern, glassmorphic system monitoring dashboard for Linux systems like Raspberry Pi 5, servers, and desktops.
 
-**Stack:** React 19 + TypeScript + Tailwind CSS 4 + Framer Motion (frontend) · FastAPI + psutil (backend) · Nginx (reverse proxy) · Docker (single container)
+**Stack:** React 19 + TypeScript + Tailwind CSS 4 + Framer Motion (frontend) · FastAPI + WebSockets + psutil (backend) · Nginx (reverse proxy) · Docker (single container)
 
 ---
 
 ## ✨ Key Features
 
 - **💎 Premium Glassmorphism UI**: High-fidelity design with real-time blur, glow effects, and symmetrical grid layouts.
-- **🚀 Real-Time Telemetry**: Live updates for CPU, Memory, Disk, Network, and Thermal health.
+- **🚀 Real-Time Telemetry**: Instant system updates via persistent **WebSockets**, replacing traditional HTTP polling for zero-latency data streaming.
 - **📊 Advanced Task Manager**: Track top processes by CPU or Memory with smooth reordering animations and persistence.
 - **🛡️ Power & Thermal Health**: Monitor Raspberry Pi hardware flags for Under-voltage, Throttling, and Temperature limits.
 - **🕒 Precision Header**: State-of-the-art real-time clock with vertical rolling digits and data "heartbeat" animations.
@@ -51,8 +51,9 @@ Open `http://<your-ip>` in a browser.
 
 | Layer | Mechanism |
 |---|---|
-| **Authentication** | `X-API-Key` header on all `/api/*` routes |
-| **Rate limiting** | Nginx: 30 req/min per IP on `/api` |
+| **Authentication** | `X-API-Key` header (REST) or `token` query param (WebSockets) |
+| **Protocol** | Bi-directional WebSockets with automatic exponential backoff reconnection |
+| **Rate limiting** | Nginx: 30 req/min per IP on `/api`, limited simultaneous WS connections |
 | **Security headers** | `X-Frame-Options`, `X-Content-Type-Options`, `CSP`, etc. |
 | **No info leakage** | Nginx version hidden, Swagger UI disabled |
 | **CORS** | Configurable via `ALLOWED_ORIGINS` env var |
@@ -90,7 +91,7 @@ Open `http://localhost:5173`. Vite proxies `/api` → `http://localhost:8000`.
 system-dash/
 ├── frontend/                    # React 19 + Vite + Tailwind CSS 4
 │   ├── src/
-│   │   ├── api/queries.ts       # React Query hooks (useSystemMetrics)
+│   │   ├── api/socket.ts        # Custom WebSocket hook (useSystemSocket) with auto-reconnect logic
 │   │   ├── components/
 │   │   │   ├── ui/              # GlassCard, MetricBar, StatValue
 │   │   │   ├── widgets/         # CpuCard, MemoryCard, DiskCard, TempCard, NetworkCard, OsCard, TopProcessesCard

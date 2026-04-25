@@ -7,14 +7,15 @@ All endpoints are protected by an X-API-Key header.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import time
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 import psutil
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Security, status
+from fastapi import FastAPI, HTTPException, Security, status, WebSocket, WebSocketDisconnect, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel
@@ -59,6 +60,39 @@ async def verify_api_key(key: Optional[str] = Security(api_key_header)) -> str:
             detail="Invalid or missing X-API-Key header.",
         )
     return key
+
+
+async def verify_ws_token(websocket: WebSocket, token: Optional[str] = Query(None)) -> bool:
+    if token is None or token != API_KEY:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or missing token")
+        return False
+    return True
+
+# ─── WebSocket Manager ────────────────────────────────────────────────────────
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Set[WebSocket] = set()
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.add(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.discard(websocket)
+
+    async def broadcast(self, metrics: SystemMetrics):
+        import json
+        data = metrics.model_dump_json()
+        dead_connections = set()
+        for connection in self.active_connections:
+            try:
+                await connection.send_text(data)
+            except Exception:
+                dead_connections.add(connection)
+        for dead in dead_connections:
+            self.disconnect(dead)
+
+manager = ConnectionManager()
 
 
 # ─── Pydantic Models ───────────────────────────────────────────────────────────
@@ -451,6 +485,70 @@ async def get_metrics() -> SystemMetrics:
         processes_memory=procs["memory"],
         timestamp=datetime.now(tz=timezone.utc).isoformat(),
     )
+
+
+@app.websocket("/ws/metrics")
+async def websocket_metrics(websocket: WebSocket, token: Optional[str] = Query(None)):
+    """
+    WebSocket endpoint for real-time metrics streaming.
+    Requires `token=API_KEY` in the query parameters.
+    """
+    if not await verify_ws_token(websocket, token):
+        return
+
+    await manager.connect(websocket)
+    try:
+        # We can optionally send an immediate initial snapshot
+        metrics = SystemMetrics(
+            cpu=_get_cpu(),
+            memory=_get_memory(),
+            disk=_get_disk(),
+            temperature=_get_temperature(),
+            network=_get_network(),
+            os=_get_os(),
+            processes_cpu=(procs := _get_processes())["cpu"],
+            processes_memory=procs["memory"],
+            timestamp=datetime.now(tz=timezone.utc).isoformat(),
+        )
+        await websocket.send_text(metrics.model_dump_json())
+        
+        # Keep connection open. The actual data is pumped out by `broadcast_metrics_loop`
+        while True:
+            # We don't expect messages from the client. Just wait or parse pings.
+            _ = await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception:
+        manager.disconnect(websocket)
+
+
+async def broadcast_metrics_loop():
+    """Background task that ticks every 2 seconds to broadcast metrics to all connected WS clients."""
+    while True:
+        if manager.active_connections:
+            try:
+                metrics = SystemMetrics(
+                    cpu=_get_cpu(),
+                    memory=_get_memory(),
+                    disk=_get_disk(),
+                    temperature=_get_temperature(),
+                    network=_get_network(),
+                    os=_get_os(),
+                    processes_cpu=(procs := _get_processes())["cpu"],
+                    processes_memory=procs["memory"],
+                    timestamp=datetime.now(tz=timezone.utc).isoformat(),
+                )
+                await manager.broadcast(metrics)
+            except Exception as e:
+                print(f"Error gathering metrics for broadcast: {e}")
+        
+        # Exact 2-second tick (could stagger slightly if collection is slow, but acceptable)
+        await asyncio.sleep(2.0)
+
+@app.on_event("startup")
+async def startup_event():
+    # Start the broadcast loop entirely in the background
+    asyncio.create_task(broadcast_metrics_loop())
 
 
 @app.get("/api/health", summary="Health check (no auth required)")
