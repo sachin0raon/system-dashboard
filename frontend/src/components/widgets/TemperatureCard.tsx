@@ -1,0 +1,127 @@
+import { Thermometer } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { GlassCard } from '../ui/GlassCard';
+import { StatValue, CardLabel } from '../ui/StatValue';
+import { getStatusColor, statusToColor, statusToGlow } from '../../lib/utils';
+import type { TemperatureInfo } from '../../types/metrics';
+
+interface TempGaugeProps {
+  label: string;
+  value: number | null;
+}
+
+function TempGauge({ label, value }: TempGaugeProps) {
+  const temp = value ?? 0;
+  const status = getStatusColor(temp, { warn: 65, danger: 80 });
+  const color = statusToColor(status);
+  const glow = statusToGlow(status);
+
+  // Gauge arc (semicircle) - SVG based
+  const radius = 40;
+  const circumference = Math.PI * radius; // half-circle circumference
+  const progress = Math.min(100, Math.max(0, ((temp - 20) / 80) * 100)); // 20°C = 0%, 100°C = 100%
+  const dashOffset = circumference - (progress / 100) * circumference;
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative w-28 h-16 overflow-visible">
+        <svg viewBox="0 0 100 55" className="w-full h-full" style={{ overflow: 'visible' }}>
+          {/* Track arc */}
+          <path
+            d="M 10 50 A 40 40 0 0 1 90 50"
+            fill="none"
+            stroke="rgba(255,255,255,0.06)"
+            strokeWidth="8"
+            strokeLinecap="round"
+          />
+          {/* Fill arc */}
+          <motion.path
+            d="M 10 50 A 40 40 0 0 1 90 50"
+            fill="none"
+            stroke={color}
+            strokeWidth="8"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            initial={{ strokeDashoffset: circumference }}
+            animate={{ strokeDashoffset: dashOffset }}
+            transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
+            style={{ filter: `drop-shadow(0 0 6px ${glow})` }}
+          />
+          {/* Center text */}
+          <text
+            x="50"
+            y="46"
+            textAnchor="middle"
+            fill={color}
+            fontSize="14"
+            fontFamily="JetBrains Mono, monospace"
+            fontWeight="700"
+          >
+            {value !== null ? `${temp.toFixed(0)}°` : 'N/A'}
+          </text>
+        </svg>
+      </div>
+      <CardLabel>{label}</CardLabel>
+    </div>
+  );
+}
+
+interface TemperatureCardProps {
+  data: TemperatureInfo;
+}
+
+export function TemperatureCard({ data }: TemperatureCardProps) {
+  const allSensors = Object.entries(data.sensors ?? {});
+
+  return (
+    <GlassCard className="p-6 space-y-5">
+      <div className="flex items-center gap-3">
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center"
+          style={{ background: 'rgba(239, 68, 68, 0.12)' }}
+        >
+          <Thermometer
+            className="w-5 h-5"
+            style={{ color: 'var(--color-danger)', filter: 'drop-shadow(0 0 6px var(--color-danger-glow))' }}
+          />
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold">Temperature</h2>
+          <CardLabel>Thermal Sensors</CardLabel>
+        </div>
+      </div>
+
+      {/* Gauges */}
+      <div className="flex justify-around pt-2">
+        <TempGauge label="CPU" value={data.cpu_celsius} />
+        <TempGauge label="GPU" value={data.gpu_celsius} />
+      </div>
+
+      {/* Extra sensor rows */}
+      {allSensors.length > 0 && (
+        <div className="space-y-2 pt-1">
+          <CardLabel>All Sensors</CardLabel>
+          <div className="grid grid-cols-2 gap-2">
+            {allSensors.map(([key, val]) => {
+              const status = getStatusColor(val, { warn: 65, danger: 80 });
+              return (
+                <div
+                  key={key}
+                  className="rounded-xl px-3 py-2 flex items-center justify-between"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}
+                >
+                  <span className="text-xs text-secondary truncate max-w-[60%]">{key}</span>
+                  <StatValue
+                    value={`${val.toFixed(0)}°C`}
+                    size="sm"
+                    color={statusToColor(status)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </GlassCard>
+  );
+}

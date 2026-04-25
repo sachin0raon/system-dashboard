@@ -1,0 +1,32 @@
+# Version control
+.git
+.gitignore
+
+# Documentation
+README.md
+
+# Application development files
+**/node_modules
+**/dist
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.venv
+**/venv
+**/.env
+**/.env.local
+
+# OS files
+.DS_Store
+
+# IDE files
+.vscode
+.idea
+
+# Build artifacts
+frontend/dist
+backend/.venv
+coverage
+.nyc_output
+.eslintcache
