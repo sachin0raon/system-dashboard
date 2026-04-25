@@ -9,7 +9,7 @@ export function useSystemSocket() {
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const reconnectTimeoutRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -48,7 +48,7 @@ export function useSystemSocket() {
         }
       };
 
-      ws.onerror = (event) => {
+      ws.onerror = (_event) => {
         if (!isSubscribed) return;
         setIsError(true);
       };

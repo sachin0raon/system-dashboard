@@ -1,4 +1,4 @@
-import { Activity, Cpu, ChevronDown } from 'lucide-react';
+import { Activity, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '../ui/GlassCard';
 import { CardLabel } from '../ui/StatValue';

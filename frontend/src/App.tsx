@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion, AnimatePresence, type Transition } from 'framer-motion';
 import { useSystemSocket } from './api/socket';
 import { Header } from './components/Header';

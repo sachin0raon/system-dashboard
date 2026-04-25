@@ -1,6 +1,6 @@
 import { Monitor, Clock, Activity } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
-import { StatValue, CardLabel } from '../ui/StatValue';
+import { CardLabel } from '../ui/StatValue';
 import type { OsInfo } from '../../types/metrics';
 
 interface OsCardProps {
