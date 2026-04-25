@@ -1,14 +1,14 @@
-import { Cpu, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { Cpu, Wifi, WifiOff } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { RealTimeClock } from './RealTimeClock';
 
 interface HeaderProps {
   hostname?: string;
   isConnected: boolean;
   isRefetching: boolean;
-  lastUpdated?: string;
 }
 
-export function Header({ hostname, isConnected, isRefetching, lastUpdated }: HeaderProps) {
+export function Header({ hostname, isConnected, isRefetching }: HeaderProps) {
   return (
     <header className="flex items-center justify-between mb-8 relative z-10">
       <div className="flex items-center gap-3">
@@ -59,27 +59,11 @@ export function Header({ hostname, isConnected, isRefetching, lastUpdated }: Hea
           </span>
         </div>
 
-        {/* Refresh spinner */}
-        <motion.div
-          animate={isRefetching ? { rotate: 360 } : { rotate: 0 }}
-          transition={
-            isRefetching
-              ? { repeat: Infinity, duration: 1, ease: 'linear' }
-              : { duration: 0.3 }
-          }
-        >
-          <RefreshCw
-            className="w-4 h-4"
-            style={{ color: isRefetching ? 'var(--color-accent)' : 'var(--color-text-muted)' }}
-          />
-        </motion.div>
 
-        {/* Last updated */}
-        {lastUpdated && (
-          <span className="text-xs text-muted font-mono hidden sm:block">
-            {new Date(lastUpdated).toLocaleTimeString()}
-          </span>
-        )}
+
+        <div className="hidden sm:block ml-2">
+          <RealTimeClock />
+        </div>
       </div>
     </header>
   );

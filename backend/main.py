@@ -101,6 +101,10 @@ class TemperatureInfo(BaseModel):
     cpu_celsius: Optional[float]
     gpu_celsius: Optional[float]
     sensors: Dict[str, float]
+    is_under_voltage: bool = False
+    is_throttled: bool = False
+    freq_capped: bool = False
+    soft_temp_limit: bool = False
 
 
 class NetworkInterface(BaseModel):
@@ -130,6 +134,14 @@ class OsInfo(BaseModel):
     process_count: int
 
 
+class ProcessInfo(BaseModel):
+    pid: int
+    name: str
+    cpu_percent: float
+    memory_percent: float
+    username: str
+
+
 class SystemMetrics(BaseModel):
     cpu: CpuInfo
     memory: MemoryInfo
@@ -137,6 +149,7 @@ class SystemMetrics(BaseModel):
     temperature: TemperatureInfo
     network: NetworkInfo
     os: OsInfo
+    processes: List[ProcessInfo]
     timestamp: str
 
 
@@ -145,6 +158,7 @@ _prev_disk_io: Optional[psutil._common.sdiskio] = None   # type: ignore[name-def
 _prev_disk_time: float = 0.0
 _prev_net_io: Optional[Dict[str, psutil._common.snetio]] = None  # type: ignore[name-defined]
 _prev_net_time: float = 0.0
+_process_cache: Dict[int, psutil.Process] = {}
 
 
 # ─── Metric Collectors ────────────────────────────────────────────────────────
@@ -224,6 +238,24 @@ def _get_temperature() -> TemperatureInfo:
     gpu_celsius: Optional[float] = None
     sensors: Dict[str, float] = {}
 
+    is_under_voltage = False
+    is_throttled = False
+    freq_capped = False
+    soft_temp_limit = False
+
+    try:
+        import subprocess
+        out = subprocess.check_output(["vcgencmd", "get_throttled"], text=True)
+        # e.g., throttled=0x50000
+        val_str = out.strip().split("=")[1]
+        val = int(val_str, 16)
+        is_under_voltage = bool(val & 1)
+        freq_capped = bool(val & 2)
+        is_throttled = bool(val & 4)
+        soft_temp_limit = bool(val & 8)
+    except Exception:
+        pass
+
     try:
         all_temps = psutil.sensors_temperatures()
         for name, entries in all_temps.items():
@@ -255,6 +287,10 @@ def _get_temperature() -> TemperatureInfo:
         cpu_celsius=cpu_celsius,
         gpu_celsius=gpu_celsius,
         sensors=sensors,
+        is_under_voltage=is_under_voltage,
+        is_throttled=is_throttled,
+        freq_capped=freq_capped,
+        soft_temp_limit=soft_temp_limit,
     )
 
 
@@ -343,6 +379,40 @@ def _get_os() -> OsInfo:
     )
 
 
+def _get_processes(limit: int = 5) -> List[ProcessInfo]:
+    global _process_cache
+    current_pids = set(psutil.pids())
+
+    _process_cache = {pid: p for pid, p in _process_cache.items() if pid in current_pids}
+
+    proc_list = []
+    for pid in current_pids:
+        try:
+            if pid not in _process_cache:
+                _process_cache[pid] = psutil.Process(pid)
+
+            p = _process_cache[pid]
+            cpu = p.cpu_percent(interval=None)
+            mem = p.memory_percent()
+
+            proc_list.append((pid, p.name(), cpu, mem, p.username()))
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess, OSError):
+            pass
+
+    proc_list.sort(key=lambda x: x[2], reverse=True)
+
+    return [
+        ProcessInfo(
+            pid=p[0],
+            name=p[1],
+            cpu_percent=round(p[2], 1),
+            memory_percent=round(p[3], 1),
+            username=p[4]
+        )
+        for p in proc_list[:limit]
+    ]
+
+
 # ─── Routes ───────────────────────────────────────────────────────────────────
 
 @app.get(
@@ -364,6 +434,7 @@ async def get_metrics() -> SystemMetrics:
         temperature=_get_temperature(),
         network=_get_network(),
         os=_get_os(),
+        processes=_get_processes(),
         timestamp=datetime.now(tz=timezone.utc).isoformat(),
     )
 

@@ -22,7 +22,7 @@ export function OsCard({ data }: OsCardProps) {
 
 
   return (
-    <GlassCard className="p-6 space-y-5">
+    <GlassCard className="p-6 space-y-6">
       <div className="flex items-center gap-3">
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center"
@@ -37,70 +37,40 @@ export function OsCard({ data }: OsCardProps) {
           />
         </div>
         <div>
-          <h2 className="text-sm font-semibold">System</h2>
-          <CardLabel>OS & General Info</CardLabel>
+          <h2 className="text-sm font-semibold">System OS</h2>
+          <CardLabel>{data.process_count} Processes</CardLabel>
         </div>
       </div>
 
-      {/* OS Details */}
-      <div className="space-y-2.5">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-xl px-4 py-3 flex flex-col gap-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}>
+          <div className="flex items-center gap-2 mb-0.5">
+            <Clock className="w-3.5 h-3.5 text-muted" />
+            <CardLabel>Uptime</CardLabel>
+          </div>
+          <div className="text-sm font-mono font-bold text-[#818cf8]">{formatUptime(data.uptime_seconds)}</div>
+        </div>
+        <div className="rounded-xl px-4 py-3 flex flex-col gap-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}>
+          <div className="flex items-center gap-2 mb-0.5">
+            <Activity className="w-3.5 h-3.5 text-muted" />
+            <CardLabel>Load Avg</CardLabel>
+          </div>
+          <div className="text-sm font-mono font-bold text-[#818cf8]">{data.load_avg_1.toFixed(2)}, {data.load_avg_5.toFixed(2)}</div>
+        </div>
+      </div>
+
+      <div className="space-y-2 pt-2 border-t border-[var(--color-border)]">
         {[
           { label: 'Hostname', value: data.hostname },
-          { label: 'OS', value: `${data.os_name} ${data.os_version}` },
+          { label: 'Platform', value: `${data.os_name} ${data.os_version}` },
           { label: 'Kernel', value: data.kernel },
-          { label: 'Arch', value: data.architecture },
+          { label: 'Architecture', value: data.architecture },
         ].map(({ label, value }) => (
-          <div
-            key={label}
-            className="flex justify-between items-center py-1.5 border-b"
-            style={{ borderColor: 'var(--color-border)' }}
-          >
-            <CardLabel>{label}</CardLabel>
-            <span className="text-xs font-mono truncate max-w-[55%] text-right" title={value}>
-              {value}
-            </span>
+          <div key={label} className="flex justify-between items-center text-xs">
+            <span className="text-secondary font-medium tracking-wide uppercase text-[10px]">{label}</span>
+            <span className="font-mono text-white truncate max-w-[65%]">{value}</span>
           </div>
         ))}
-      </div>
-
-      {/* Uptime & Processes */}
-      <div className="grid grid-cols-2 gap-3">
-        <div
-          className="rounded-xl px-4 py-3 flex flex-col items-center gap-1"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}
-        >
-          <Clock className="w-4 h-4 text-muted mb-0.5" />
-          <StatValue value={formatUptime(data.uptime_seconds)} size="sm" color="#818cf8" />
-          <CardLabel>Uptime</CardLabel>
-        </div>
-        <div
-          className="rounded-xl px-4 py-3 flex flex-col items-center gap-1"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}
-        >
-          <Activity className="w-4 h-4 text-muted mb-0.5" />
-          <StatValue value={data.process_count} size="sm" color="#818cf8" />
-          <CardLabel>Processes</CardLabel>
-        </div>
-      </div>
-
-      {/* Load average */}
-      <div
-        className="rounded-xl px-4 py-3"
-        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}
-      >
-        <CardLabel className="mb-2">Load Average</CardLabel>
-        <div className="grid grid-cols-3 gap-2 text-center">
-          {[
-            { label: '1 min', value: data.load_avg_1 },
-            { label: '5 min', value: data.load_avg_5 },
-            { label: '15 min', value: data.load_avg_15 },
-          ].map(({ label, value }) => (
-            <div key={label}>
-              <StatValue value={value.toFixed(2)} size="sm" color="#818cf8" />
-              <CardLabel className="mt-0.5">{label}</CardLabel>
-            </div>
-          ))}
-        </div>
       </div>
     </GlassCard>
   );

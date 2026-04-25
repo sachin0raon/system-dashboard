@@ -97,6 +97,28 @@ export function TemperatureCard({ data }: TemperatureCardProps) {
         <TempGauge label="GPU" value={data.gpu_celsius} />
       </div>
 
+      {/* Power & Thermal Health */}
+      <div className="space-y-2 pt-1">
+        <CardLabel>Power & Thermal Health</CardLabel>
+        <div className="flex flex-wrap gap-2">
+          {data.is_under_voltage && (
+            <span className="text-[11px] font-semibold text-danger py-1 px-2 rounded-md bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)]" style={{ color: 'var(--color-danger)' }}>Under-Voltage</span>
+          )}
+          {data.is_throttled && (
+            <span className="text-[11px] font-semibold text-danger py-1 px-2 rounded-md bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)]" style={{ color: 'var(--color-danger)' }}>Throttled</span>
+          )}
+          {data.freq_capped && (
+            <span className="text-[11px] font-semibold text-warning py-1 px-2 rounded-md bg-[rgba(245,158,11,0.1)] border border-[rgba(245,158,11,0.2)]" style={{ color: 'var(--color-warning)' }}>Freq Capped</span>
+          )}
+          {data.soft_temp_limit && (
+            <span className="text-[11px] font-semibold text-warning py-1 px-2 rounded-md bg-[rgba(245,158,11,0.1)] border border-[rgba(245,158,11,0.2)]" style={{ color: 'var(--color-warning)' }}>Soft Temp Limit</span>
+          )}
+          {!(data.is_under_voltage || data.is_throttled || data.freq_capped || data.soft_temp_limit) && (
+            <span className="text-[11px] font-semibold text-success py-1 px-2 rounded-md bg-[rgba(34,197,94,0.1)] border border-[rgba(34,197,94,0.2)]" style={{ color: 'var(--color-success)' }}>All Systems Nominal</span>
+          )}
+        </div>
+      </div>
+
       {/* Extra sensor rows */}
       {allSensors.length > 0 && (
         <div className="space-y-2 pt-1">

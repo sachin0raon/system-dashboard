@@ -38,6 +38,10 @@ export interface TemperatureInfo {
   cpu_celsius: number | null;
   gpu_celsius: number | null;
   sensors: Record<string, number>;
+  is_under_voltage: boolean;
+  is_throttled: boolean;
+  freq_capped: boolean;
+  soft_temp_limit: boolean;
 }
 
 export interface NetworkInterface {
@@ -67,6 +71,14 @@ export interface OsInfo {
   process_count: number;
 }
 
+export interface ProcessInfo {
+  pid: number;
+  name: string;
+  cpu_percent: number;
+  memory_percent: number;
+  username: string;
+}
+
 export interface SystemMetrics {
   cpu: CpuInfo;
   memory: MemoryInfo;
@@ -74,5 +86,6 @@ export interface SystemMetrics {
   temperature: TemperatureInfo;
   network: NetworkInfo;
   os: OsInfo;
+  processes: ProcessInfo[];
   timestamp: string;
 }

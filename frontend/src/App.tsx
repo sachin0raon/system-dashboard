@@ -8,6 +8,7 @@ import { TemperatureCard } from './components/widgets/TemperatureCard';
 import { DiskCard } from './components/widgets/DiskCard';
 import { NetworkCard } from './components/widgets/NetworkCard';
 import { OsCard } from './components/widgets/OsCard';
+import { TopProcessesCard } from './components/widgets/TopProcessesCard';
 import { SkeletonCard } from './components/LoadingStates';
 
 const cardTransition = (i: number): Transition => ({
@@ -59,7 +60,6 @@ function App() {
           hostname={data?.os.hostname}
           isConnected={!isError && !isLoading}
           isRefetching={isRefetching}
-          lastUpdated={data?.timestamp}
         />
 
         {/* ── Error call-out ──────────────────────────────────── */}
@@ -92,29 +92,40 @@ function App() {
 
         {/* ── Dashboard Grid ──────────────────────────────────── */}
         {isLoading && !data ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <SkeletonCard key={i} className={i === 4 ? 'md:col-span-2 lg:col-span-3' : ''} />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+            {[
+              'lg:col-span-2', 
+              'lg:col-span-2', 
+              'lg:col-span-2',
+              'lg:col-span-3',
+              'md:col-span-2 lg:col-span-3', 
+              'md:col-span-2 lg:col-span-3', 
+              'md:col-span-2 lg:col-span-3'
+            ].map((className, i) => (
+              <div key={i} className={className}>
+                <SkeletonCard />
+              </div>
             ))}
           </div>
         ) : data ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Row 1: CPU, Memory, Temperature */}
-            {([
-              <CpuCard key="cpu" data={data.cpu} />,
-              <MemoryCard key="mem" data={data.memory} />,
-              <TemperatureCard key="temp" data={data.temperature} />,
-              <DiskCard key="disk" data={data.disk} />,
-              <OsCard key="os" data={data.os} />,
-              <NetworkCard key="net" data={data.network} />,
-            ] as React.ReactNode[]).map((card, i) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+            {[
+              { id: 'cpu', node: <CpuCard data={data.cpu} />, className: 'lg:col-span-2' },
+              { id: 'mem', node: <MemoryCard data={data.memory} />, className: 'lg:col-span-2' },
+              { id: 'os', node: <OsCard data={data.os} />, className: 'lg:col-span-2' },
+              { id: 'disk', node: <DiskCard data={data.disk} />, className: 'lg:col-span-3' },
+              { id: 'temp', node: <TemperatureCard data={data.temperature} />, className: 'md:col-span-2 lg:col-span-3' },
+              { id: 'net', node: <NetworkCard data={data.network} />, className: 'md:col-span-2 lg:col-span-3' },
+              { id: 'procs', node: <TopProcessesCard data={data.processes} />, className: 'md:col-span-2 lg:col-span-3' },
+            ].map((item, i) => (
               <motion.div
-                key={i}
+                key={item.id}
+                className={item.className}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={cardTransition(i)}
               >
-                {card}
+                {item.node}
               </motion.div>
             ))}
           </div>
