@@ -34,12 +34,27 @@ nano backend/.env
 API_KEY=$(grep API_KEY backend/.env | cut -d= -f2) docker compose up -d --build
 ```
 
-Or explicitly:
+### Option B: Docker CLI (Alternative)
+
+If you prefer using standard Docker commands:
 
 ```bash
-docker compose build --build-arg VITE_API_KEY=your-secret-key
-docker compose up -d
+# 1. Build
+docker build --build-arg VITE_API_KEY=your-secret-key -t pi5-dashboard:latest .
+
+# 2. Run
+docker run -d \
+  --name pi5-dashboard \
+  --restart unless-stopped \
+  -p 80:80 \
+  --env-file backend/.env \
+  --pid host \
+  -v /proc:/proc:ro \
+  -v /sys:/sys:ro \
+  pi5-dashboard:latest
 ```
+
+*(Note: Mapping `/dev/vchiq` is only applicable to Raspberry Pi hardware and may fail on other Linux distributions if the driver is not loaded.)*
 
 ### 3. Access
 
