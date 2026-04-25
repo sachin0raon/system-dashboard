@@ -116,7 +116,7 @@ function App() {
               { id: 'disk', node: <DiskCard data={data.disk} />, className: 'lg:col-span-3' },
               { id: 'temp', node: <TemperatureCard data={data.temperature} />, className: 'md:col-span-2 lg:col-span-3' },
               { id: 'net', node: <NetworkCard data={data.network} />, className: 'md:col-span-2 lg:col-span-3' },
-              { id: 'procs', node: <TopProcessesCard data={data.processes} />, className: 'md:col-span-2 lg:col-span-3' },
+              { id: 'procs', node: <TopProcessesCard cpuData={data.processes_cpu} memData={data.processes_memory} />, className: 'md:col-span-2 lg:col-span-3' },
             ].map((item, i) => (
               <motion.div
                 key={item.id}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Network } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
 import { StatValue, CardLabel } from '../ui/StatValue';
@@ -36,13 +37,18 @@ export function NetworkCard({ data }: NetworkCardProps) {
             className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: 'rgba(34, 197, 94, 0.12)' }}
           >
-            <Network
-              className="w-5 h-5"
-              style={{
-                color: 'var(--color-ok)',
-                filter: 'drop-shadow(0 0 6px var(--color-ok-glow))',
-              }}
-            />
+            <motion.div
+              animate={{ opacity: [1, 0.6, 1] }}
+              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+            >
+              <Network
+                className="w-5 h-5"
+                style={{
+                  color: 'var(--color-ok)',
+                  filter: 'drop-shadow(0 0 6px var(--color-ok-glow))',
+                }}
+              />
+            </motion.div>
           </div>
           <div>
             <h2 className="text-sm font-semibold">Network</h2>
@@ -79,12 +85,14 @@ export function NetworkCard({ data }: NetworkCardProps) {
               <p className="text-xs text-secondary font-mono mt-0.5 truncate">{currentIface.ip_address}</p>
             )}
           </div>
-          <div
+          <motion.div
             className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0"
             style={{
               background: 'var(--color-ok)',
               boxShadow: '0 0 6px var(--color-ok-glow)',
             }}
+            animate={currentIface.bytes_recv_per_sec > 1024 ? { scale: [1, 1.3, 1] } : {}}
+            transition={{ repeat: Infinity, duration: 0.5 }}
           />
         </div>
 

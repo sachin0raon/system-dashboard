@@ -86,6 +86,7 @@ export interface SystemMetrics {
   temperature: TemperatureInfo;
   network: NetworkInfo;
   os: OsInfo;
-  processes: ProcessInfo[];
+  processes_cpu: ProcessInfo[];
+  processes_memory: ProcessInfo[];
   timestamp: string;
 }

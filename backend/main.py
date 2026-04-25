@@ -149,7 +149,8 @@ class SystemMetrics(BaseModel):
     temperature: TemperatureInfo
     network: NetworkInfo
     os: OsInfo
-    processes: List[ProcessInfo]
+    processes_cpu: List[ProcessInfo]
+    processes_memory: List[ProcessInfo]
     timestamp: str
 
 
@@ -379,7 +380,7 @@ def _get_os() -> OsInfo:
     )
 
 
-def _get_processes(limit: int = 5) -> List[ProcessInfo]:
+def _get_processes(limit: int = 5) -> Dict[str, List[ProcessInfo]]:
     global _process_cache
     current_pids = set(psutil.pids())
 
@@ -399,18 +400,30 @@ def _get_processes(limit: int = 5) -> List[ProcessInfo]:
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess, OSError):
             pass
 
+    # Sort by CPU
     proc_list.sort(key=lambda x: x[2], reverse=True)
+    top_cpu = proc_list[:limit]
 
-    return [
-        ProcessInfo(
-            pid=p[0],
-            name=p[1],
-            cpu_percent=round(p[2], 1),
-            memory_percent=round(p[3], 1),
-            username=p[4]
-        )
-        for p in proc_list[:limit]
-    ]
+    # Sort by Memory
+    proc_list.sort(key=lambda x: x[3], reverse=True)
+    top_mem = proc_list[:limit]
+
+    def to_info(lst):
+        return [
+            ProcessInfo(
+                pid=p[0],
+                name=p[1],
+                cpu_percent=round(p[2], 1),
+                memory_percent=round(p[3], 1),
+                username=p[4]
+            )
+            for p in lst
+        ]
+
+    return {
+        "cpu": to_info(top_cpu),
+        "memory": to_info(top_mem)
+    }
 
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
@@ -434,7 +447,8 @@ async def get_metrics() -> SystemMetrics:
         temperature=_get_temperature(),
         network=_get_network(),
         os=_get_os(),
-        processes=_get_processes(),
+        processes_cpu=(procs := _get_processes())["cpu"],
+        processes_memory=procs["memory"],
         timestamp=datetime.now(tz=timezone.utc).isoformat(),
     )
 

@@ -1,4 +1,5 @@
 import { MemoryStick } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { GlassCard } from '../ui/GlassCard';
 import { MetricBar } from '../ui/MetricBar';
 import { StatValue, CardLabel } from '../ui/StatValue';
@@ -14,12 +15,18 @@ export function MemoryCard({ data }: MemoryCardProps) {
     <GlassCard className="p-6 space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div
+          <motion.div
             className="w-9 h-9 rounded-xl flex items-center justify-center"
             style={{ background: 'rgba(139, 92, 246, 0.15)' }}
+            animate={{ 
+              boxShadow: data.percent > 80 
+                ? ['0 0 0px rgba(139,92,246,0.35)', '0 0 15px rgba(139,92,246,0.35)', '0 0 0px rgba(139,92,246,0.35)']
+                : 'none'
+            }}
+            transition={{ repeat: Infinity, duration: 1.5 }}
           >
             <MemoryStick className="w-5 h-5" style={{ color: '#a78bfa', filter: 'drop-shadow(0 0 6px rgba(139,92,246,0.5))' }} />
-          </div>
+          </motion.div>
           <div>
             <h2 className="text-sm font-semibold">Memory</h2>
             <CardLabel>RAM & Swap</CardLabel>

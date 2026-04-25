@@ -15,12 +15,18 @@ export function CpuCard({ data }: CpuCardProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div
+          <motion.div
             className="w-9 h-9 rounded-xl flex items-center justify-center"
             style={{ background: 'var(--color-accent-dim)' }}
+            animate={{ 
+              boxShadow: data.usage_percent > 70 
+                ? ['0 0 0px var(--color-accent-glow)', '0 0 15px var(--color-accent-glow)', '0 0 0px var(--color-accent-glow)']
+                : 'none'
+            }}
+            transition={{ repeat: Infinity, duration: data.usage_percent > 85 ? 0.5 : 1.5 }}
           >
             <Cpu className="w-5 h-5 glow-accent" style={{ color: 'var(--color-accent)' }} />
-          </div>
+          </motion.div>
           <div>
             <h2 className="text-sm font-semibold">CPU</h2>
             <CardLabel>Processor</CardLabel>
@@ -67,7 +73,7 @@ export function CpuCard({ data }: CpuCardProps) {
             className="rounded-xl px-3 py-2 text-center"
             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}
           >
-            <StatValue value={value} unit={unit} size="sm" />
+            <StatValue value={value} unit={unit} size="sm" color="var(--color-accent)" />
             <CardLabel className="mt-0.5">{label}</CardLabel>
           </div>
         ))}

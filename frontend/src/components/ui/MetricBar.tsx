@@ -36,16 +36,19 @@ export function MetricBar({
       )}
       <div className="progress-track">
         <motion.div
-          className="progress-fill"
+          className="progress-fill relative"
           style={{
             width: animated ? undefined : `${clampedValue}%`,
-            backgroundColor: fillColor,
-            boxShadow: `0 0 8px ${glowColor}`,
+            background: `linear-gradient(90deg, ${fillColor} 0%, ${fillColor} 80%, white 100%)`,
+            boxShadow: `0 0 12px ${glowColor}`,
           }}
           initial={{ width: 0 }}
           animate={animated ? { width: `${clampedValue}%` } : undefined}
-          transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-        />
+          transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
+        >
+          {/* Subtle sheen overlay */}
+          <div className="absolute inset-0 bg-white/10 opacity-30" />
+        </motion.div>
       </div>
     </div>
   );
