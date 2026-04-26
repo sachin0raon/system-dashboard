@@ -48,27 +48,42 @@ export function OsCard({ data }: OsCardProps) {
             <Clock className="w-3.5 h-3.5 text-muted" />
             <CardLabel>Uptime</CardLabel>
           </div>
-          <div className="text-sm font-mono font-bold text-[#818cf8]">{formatUptime(data.uptime_seconds)}</div>
+          <div>
+            <div className="text-sm font-mono font-bold text-[#818cf8]">{formatUptime(data.uptime_seconds)}</div>
+            <div className="text-[10px] font-mono mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.28)' }}>
+              Boot: {new Date(data.boot_time).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} {new Date(data.boot_time).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </div>
         </div>
         <div className="rounded-xl px-4 py-3 flex flex-col gap-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}>
           <div className="flex items-center gap-2 mb-0.5">
             <Activity className="w-3.5 h-3.5 text-muted" />
             <CardLabel>Load Avg</CardLabel>
           </div>
-          <div className="text-sm font-mono font-bold text-[#818cf8]">{data.load_avg_1.toFixed(2)}, {data.load_avg_5.toFixed(2)}</div>
+          <div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-sm font-mono font-bold text-[#818cf8]">{data.load_avg_1.toFixed(2)}</span>
+              <span className="text-[10px] text-muted">1m</span>
+            </div>
+            <div className="text-[10px] font-mono mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.28)' }}>
+              5m: {data.load_avg_5.toFixed(2)} · 15m: {data.load_avg_15.toFixed(2)}
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-2 pt-2 border-t border-[var(--color-border)]">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 pt-2 border-t border-[var(--color-border)]">
         {[
           { label: 'Hostname', value: data.hostname },
-          { label: 'Platform', value: `${data.os_name} ${data.os_version}` },
-          { label: 'Kernel', value: data.kernel },
           { label: 'Architecture', value: data.architecture },
+          { label: 'OS Name', value: data.os_name },
+          { label: 'OS Version', value: data.os_version },
+          { label: 'Kernel', value: data.kernel },
+          { label: 'Processes', value: data.process_count.toString() },
         ].map(({ label, value }) => (
-          <div key={label} className="flex justify-between items-center text-xs">
-            <span className="text-secondary font-medium tracking-wide uppercase text-[10px]">{label}</span>
-            <span className="font-mono text-white truncate max-w-[65%]">{value}</span>
+          <div key={label} className="flex flex-col">
+            <span className="text-secondary font-medium tracking-wide uppercase text-[9px] mb-0.5">{label}</span>
+            <span className="font-mono text-white text-[11px] truncate pr-2" title={value}>{value}</span>
           </div>
         ))}
       </div>
