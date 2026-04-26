@@ -2,6 +2,8 @@
 
 A beautiful, modern, glassmorphic system monitoring dashboard for Linux systems like Raspberry Pi 5, servers, and desktops.
 
+![Dashboard](dashboard.png)
+
 **Stack:** React 19 + TypeScript + Tailwind CSS 4 + Framer Motion (frontend) · FastAPI + WebSockets + psutil (backend) · Nginx (reverse proxy) · Docker (single container)
 
 ---
@@ -100,18 +102,11 @@ Open `http://localhost:5173`. Vite proxies `/api` → `http://localhost:8000`.
 
 ---
 
-## Option C: systemd (Native Linux Service)
+## Option C: Hybrid (systemd Backend + Docker Frontend)
 
-For a permanent, non-Docker setup on a Raspberry Pi or server.
+The best of both worlds: **Native Backend** for direct hardware sensor access and **Docker Frontend** for clean environment isolation.
 
-### 1. Build the Frontend
-```bash
-cd frontend
-npm install
-npm run build
-```
-
-### 2. Create Backend Service
+### 1. Backend: systemd Service
 Create `/etc/systemd/system/rpi-dash-backend.service`:
 ```ini
 [Unit]
@@ -121,7 +116,8 @@ After=network.target
 [Service]
 User=your_user
 WorkingDirectory=/path/to/rpi-dash/backend
-ExecStart=/path/to/rpi-dash/backend/.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8000
+# Listen on 0.0.0.0 so the container can reach the host
+ExecStart=/path/to/rpi-dash/backend/.venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
 Restart=always
 Environment=API_KEY=your_secret_key
 
@@ -129,15 +125,28 @@ Environment=API_KEY=your_secret_key
 WantedBy=multi-user.target
 ```
 
-### 3. Configure Nginx
-Create a site config in `/etc/nginx/sites-available/rpi-dash` (refer to `nginx/nginx.conf` for optimized headers) pointing `root` to your `frontend/dist` folder and proxying `/api` and `/ws` to `127.0.0.1:8000`.
-
-### 4. Enable Services
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable rpi-dash-backend
 sudo systemctl start rpi-dash-backend
-sudo systemctl restart nginx
+```
+
+### 2. Frontend: Docker Container
+Run this from the project root. The `--add-host` flag allows the container to talk to the host machine via `host.docker.internal`.
+
+```bash
+# Build
+docker build -f Dockerfile.frontend \
+  --build-arg VITE_API_KEY=your_secret_key \
+  -t rpi-dash-frontend:latest .
+
+# Run
+docker run -d \
+  --name rpi-dash-ui \
+  -p 80:80 \
+  --add-host=host.docker.internal:host-gateway \
+  --restart unless-stopped \
+  rpi-dash-frontend:latest
 ```
 
 ---
