@@ -174,6 +174,10 @@ class ProcessInfo(BaseModel):
     cpu_percent: float
     memory_percent: float
     username: str
+    cmdline: str          # truncated command-line string
+    create_time: float    # epoch seconds; frontend computes uptime from this
+    ppid: int             # parent PID (0 if unavailable)
+    num_threads: int
 
 
 class SystemMetrics(BaseModel):
@@ -426,7 +430,7 @@ def _get_os() -> OsInfo:
     )
 
 
-def _get_processes(limit: int = 5) -> Dict[str, List[ProcessInfo]]:
+def _get_processes(limit: int = 10) -> Dict[str, List[ProcessInfo]]:
     global _process_cache
     current_pids = set(psutil.pids())
 
@@ -442,7 +446,29 @@ def _get_processes(limit: int = 5) -> Dict[str, List[ProcessInfo]]:
             cpu = p.cpu_percent(interval=None)
             mem = p.memory_percent()
 
-            proc_list.append((pid, p.name(), cpu, mem, p.username()))
+            # --- new fields (each guarded; AccessDenied is common) ---
+            try:
+                raw_cmd = p.cmdline()
+                cmdline = " ".join(raw_cmd)[:120] if raw_cmd else p.name()
+            except (psutil.AccessDenied, psutil.ZombieProcess, OSError):
+                cmdline = p.name()
+
+            try:
+                create_time = p.create_time()
+            except (psutil.AccessDenied, OSError):
+                create_time = 0.0
+
+            try:
+                ppid = p.ppid()
+            except (psutil.AccessDenied, OSError):
+                ppid = 0
+
+            try:
+                num_threads = p.num_threads()
+            except (psutil.AccessDenied, OSError):
+                num_threads = 1
+
+            proc_list.append((pid, p.name(), cpu, mem, p.username(), cmdline, create_time, ppid, num_threads))
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess, OSError):
             pass
 
@@ -461,7 +487,11 @@ def _get_processes(limit: int = 5) -> Dict[str, List[ProcessInfo]]:
                 name=p[1],
                 cpu_percent=round(p[2], 1),
                 memory_percent=round(p[3], 1),
-                username=p[4]
+                username=p[4],
+                cmdline=p[5],
+                create_time=p[6],
+                ppid=p[7],
+                num_threads=p[8],
             )
             for p in lst
         ]

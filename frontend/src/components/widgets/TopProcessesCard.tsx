@@ -1,28 +1,105 @@
-import { Activity, ChevronDown } from 'lucide-react';
+import { Activity, ChevronDown, ChevronUp, ChevronsUpDown, GitBranch } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
 import { CardLabel } from '../ui/StatValue';
 import type { ProcessInfo } from '../../types/metrics';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 interface TopProcessesCardProps {
   cpuData: ProcessInfo[];
   memData: ProcessInfo[];
 }
 
+type SortSource = 'cpu' | 'memory';
+type SortCol = 'pid' | 'name' | 'cpu' | 'mem' | 'threads' | 'uptime';
+type SortDir = 'asc' | 'desc';
+
+/** Human-readable uptime from epoch seconds */
+function formatUptime(createTimeEpoch: number): string {
+  if (!createTimeEpoch) return '—';
+  const secs = Math.floor(Date.now() / 1000 - createTimeEpoch);
+  if (secs < 0) return '—';
+  if (secs < 60) return `${secs}s`;
+  const m = Math.floor(secs / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  const rm = m % 60;
+  if (h < 24) return `${h}h ${rm}m`;
+  const d = Math.floor(h / 24);
+  const rh = h % 24;
+  return `${d}d ${rh}h`;
+}
+
+/** Trim cmdline to a readable length */
+function shortenCmd(cmd: string): string {
+  // Strip leading path components for readability: show last segment + args
+  const parts = cmd.split(' ');
+  const binary = parts[0].split('/').pop() ?? parts[0];
+  const args = parts.slice(1).join(' ');
+  const short = args ? `${binary} ${args}` : binary;
+  return short.length > 60 ? short.slice(0, 57) + '…' : short;
+}
+
+function SortIcon({ col, active, dir }: { col: string; active: boolean; dir: SortDir }) {
+  if (!active) return <ChevronsUpDown className="w-3 h-3 opacity-30 inline ml-1" />;
+  return dir === 'desc'
+    ? <ChevronDown className="w-3 h-3 inline ml-1 text-[var(--color-accent)]" />
+    : <ChevronUp className="w-3 h-3 inline ml-1 text-[var(--color-accent)]" />;
+}
+
 export function TopProcessesCard({ cpuData, memData }: TopProcessesCardProps) {
-  const [sortBy, setSortBy] = useState<'cpu' | 'memory'>(() => {
-    return (localStorage.getItem('process-sort-by') as 'cpu' | 'memory') || 'cpu';
-  });
+  const [sortSource, setSortSource] = useState<SortSource>(() =>
+    (localStorage.getItem('process-sort-by') as SortSource) || 'cpu'
+  );
+  const [sortCol, setSortCol] = useState<SortCol>('cpu');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   useEffect(() => {
-    localStorage.setItem('process-sort-by', sortBy);
-  }, [sortBy]);
+    localStorage.setItem('process-sort-by', sortSource);
+  }, [sortSource]);
 
-  const activeData = sortBy === 'cpu' ? cpuData : memData;
+  // Deduplicate by PID (merge cpu & mem lists), keeping the richest data
+  const merged = useMemo<ProcessInfo[]>(() => {
+    const base = sortSource === 'cpu' ? cpuData : memData;
+    return base;
+  }, [sortSource, cpuData, memData]);
+
+  const sorted = useMemo(() => {
+    const arr = [...merged];
+    arr.sort((a, b) => {
+      let av: number | string, bv: number | string;
+      switch (sortCol) {
+        case 'pid':      av = a.pid;             bv = b.pid;             break;
+        case 'name':     av = a.name.toLowerCase(); bv = b.name.toLowerCase(); break;
+        case 'cpu':      av = a.cpu_percent;     bv = b.cpu_percent;     break;
+        case 'mem':      av = a.memory_percent;  bv = b.memory_percent;  break;
+        case 'threads':  av = a.num_threads;     bv = b.num_threads;     break;
+        case 'uptime':   av = a.create_time;     bv = b.create_time;     break;
+        default:         av = a.cpu_percent;     bv = b.cpu_percent;
+      }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return arr;
+  }, [merged, sortCol, sortDir]);
+
+  function handleColClick(col: SortCol) {
+    if (sortCol === col) {
+      setSortDir(d => d === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortCol(col);
+      setSortDir('desc');
+    }
+  }
+
+  const thCls = (col: SortCol) =>
+    `px-4 py-3 font-semibold uppercase tracking-wider text-[10px] cursor-pointer select-none whitespace-nowrap transition-colors
+    ${sortCol === col ? 'text-[var(--color-accent)]' : 'text-muted hover:text-secondary'}`;
 
   return (
     <GlassCard className="p-6 space-y-4">
-      <div className="flex items-center justify-between mb-2">
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center"
@@ -35,15 +112,19 @@ export function TopProcessesCard({ cpuData, memData }: TopProcessesCardProps) {
           </div>
           <div>
             <h2 className="text-sm font-semibold">Top Processes</h2>
-            <CardLabel>Live Task Manager</CardLabel>
+            <CardLabel>Live Task Manager · {sorted.length} shown</CardLabel>
           </div>
         </div>
 
-        {/* Sort Dropdown */}
+        {/* Sort source selector */}
         <div className="relative group/select">
           <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'cpu' | 'memory')}
+            value={sortSource}
+            onChange={(e) => {
+              setSortSource(e.target.value as SortSource);
+              setSortCol(e.target.value === 'cpu' ? 'cpu' : 'mem');
+              setSortDir('desc');
+            }}
             className="appearance-none bg-white/[0.05] hover:bg-white/[0.1] text-xs font-semibold py-1.5 pl-3 pr-8 rounded-lg border border-white/10 outline-none cursor-pointer transition-all text-white/80"
           >
             <option value="cpu">By CPU %</option>
@@ -55,68 +136,153 @@ export function TopProcessesCard({ cpuData, memData }: TopProcessesCardProps) {
         </div>
       </div>
 
+      {/* ── Table ──────────────────────────────────────────────── */}
       <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[rgba(0,0,0,0.2)] backdrop-blur-md">
-        <table className="w-full min-w-[450px] text-xs text-left border-collapse">
+        <table className="w-full text-xs text-left border-collapse">
           <thead>
             <tr className="bg-white/5 border-b border-[var(--color-border)]">
-              <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px] text-muted">PID</th>
-              <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px] text-muted">Process Name</th>
-              <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px] text-muted text-right">CPU %</th>
-              <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px] text-muted text-right">MEM %</th>
+              <th className={thCls('pid')} onClick={() => handleColClick('pid')}>
+                PID <SortIcon col="pid" active={sortCol === 'pid'} dir={sortDir} />
+              </th>
+              <th className={thCls('name')} onClick={() => handleColClick('name')}>
+                Process <SortIcon col="name" active={sortCol === 'name'} dir={sortDir} />
+              </th>
+              <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px] text-muted">
+                Command / Path
+              </th>
+              <th className={`${thCls('threads')} text-right`} onClick={() => handleColClick('threads')}>
+                Threads <SortIcon col="threads" active={sortCol === 'threads'} dir={sortDir} />
+              </th>
+              <th className={`${thCls('uptime')} text-right`} onClick={() => handleColClick('uptime')}>
+                Uptime <SortIcon col="uptime" active={sortCol === 'uptime'} dir={sortDir} />
+              </th>
+              <th className={`${thCls('cpu')} text-right`} onClick={() => handleColClick('cpu')}>
+                CPU % <SortIcon col="cpu" active={sortCol === 'cpu'} dir={sortDir} />
+              </th>
+              <th className={`${thCls('mem')} text-right`} onClick={() => handleColClick('mem')}>
+                MEM % <SortIcon col="mem" active={sortCol === 'mem'} dir={sortDir} />
+              </th>
             </tr>
           </thead>
           <tbody>
-              {activeData.length > 0 ? (
-                activeData.map((proc) => (
+            {sorted.length > 0 ? (
+              sorted.map((proc) => {
+                const isChild = proc.ppid > 1;
+                return (
                   <tr
                     key={proc.pid}
-                    className="group hover:bg-white/[0.05] transition-colors border-b border-white/[0.03] last:border-b-0"
+                    className="group hover:bg-white/[0.04] transition-colors border-b border-white/[0.03] last:border-b-0"
                   >
-                    <td className="px-4 py-3 text-muted font-mono">{proc.pid}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-white/90 truncate max-w-[100px] sm:max-w-[150px] lg:max-w-[200px]">{proc.name}</span>
+                    {/* PID */}
+                    <td className="px-4 py-2.5 text-muted font-mono text-[11px] whitespace-nowrap">
+                      {proc.pid}
+                    </td>
+
+                    {/* Name + user + parent badge */}
+                    <td className="px-4 py-2.5">
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-white/90 truncate max-w-[130px]">{proc.name}</span>
+                          {isChild && (
+                            <span
+                              className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-md shrink-0"
+                              style={{
+                                background: 'rgba(139,92,246,0.12)',
+                                border: '1px solid rgba(139,92,246,0.25)',
+                                color: '#a78bfa',
+                              }}
+                              title={`Parent PID: ${proc.ppid}`}
+                            >
+                              <GitBranch className="w-2.5 h-2.5" />
+                              {proc.ppid}
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[9px] uppercase tracking-wider text-muted opacity-60">
                           {proc.username}
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right">
+
+                    {/* Command / Path */}
+                    <td className="px-4 py-2.5 max-w-[340px]">
+                      <span
+                        className="font-mono text-[10px] text-white/50 group-hover:text-white/70 transition-colors truncate block"
+                        title={proc.cmdline}
+                      >
+                        {shortenCmd(proc.cmdline)}
+                      </span>
+                    </td>
+
+                    {/* Threads */}
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                      <span className="font-mono text-[11px] text-white/60">{proc.num_threads}</span>
+                    </td>
+
+                    {/* Uptime */}
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                      <span className="font-mono text-[11px] text-white/50">
+                        {formatUptime(proc.create_time)}
+                      </span>
+                    </td>
+
+                    {/* CPU % */}
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap">
                       <div className="flex flex-col items-end gap-1">
-                        <span className={`font-mono font-bold group-hover:glow-accent transition-all ${sortBy === 'cpu' ? 'text-primary' : 'text-zinc-400'}`}>
+                        <span
+                          className={`font-mono font-bold text-[11px] ${
+                            sortSource === 'cpu' ? 'text-[var(--color-primary)]' : 'text-zinc-400'
+                          }`}
+                        >
                           {proc.cpu_percent.toFixed(1)}%
                         </span>
-                        {/* Mini bar indicator */}
-                        <div className="w-12 h-1 bg-white/5 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full ${sortBy === 'cpu' ? 'bg-primary' : 'bg-zinc-500'}`}
-                            style={{ width: `${Math.min(100, proc.cpu_percent)}%` }}
+                        <div className="w-14 h-1 bg-white/5 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${Math.min(100, proc.cpu_percent)}%`,
+                              background: sortSource === 'cpu'
+                                ? 'var(--color-primary)'
+                                : 'rgba(161,161,170,0.5)',
+                            }}
                           />
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right">
+
+                    {/* MEM % */}
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap">
                       <div className="flex flex-col items-end gap-1">
-                        <span className={`font-mono font-bold transition-all ${sortBy === 'memory' ? 'text-purple-400' : 'text-zinc-400'}`}>
+                        <span
+                          className={`font-mono font-bold text-[11px] ${
+                            sortSource === 'memory' ? 'text-purple-400' : 'text-zinc-400'
+                          }`}
+                        >
                           {proc.memory_percent.toFixed(1)}%
                         </span>
-                        <div className="w-12 h-1 bg-white/5 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full ${sortBy === 'memory' ? 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.4)]' : 'bg-zinc-500'}`}
-                            style={{ width: `${Math.min(100, proc.memory_percent)}%` }}
+                        <div className="w-14 h-1 bg-white/5 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${Math.min(100, proc.memory_percent)}%`,
+                              background: sortSource === 'memory'
+                                ? 'rgb(168,85,247)'
+                                : 'rgba(161,161,170,0.5)',
+                            }}
                           />
                         </div>
                       </div>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-muted italic">
-                    No intensive processes detected
-                  </td>
-                </tr>
-              )}
+                );
+              })
+            ) : (
+              <tr>
+                <td colSpan={7} className="px-4 py-10 text-center text-muted italic">
+                  No intensive processes detected
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

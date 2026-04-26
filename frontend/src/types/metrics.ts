@@ -77,6 +77,10 @@ export interface ProcessInfo {
   cpu_percent: number;
   memory_percent: number;
   username: string;
+  cmdline: string;       // truncated command string (max 120 chars)
+  create_time: number;   // epoch seconds — used to compute uptime
+  ppid: number;          // parent PID (0 = root/unknown)
+  num_threads: number;
 }
 
 export interface SystemMetrics {
