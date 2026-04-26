@@ -39,7 +39,7 @@ function shortenCmd(cmd: string): string {
   return short.length > 60 ? short.slice(0, 57) + '…' : short;
 }
 
-function SortIcon({ col, active, dir }: { col: string; active: boolean; dir: SortDir }) {
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
   if (!active) return <ChevronsUpDown className="w-3 h-3 opacity-30 inline ml-1" />;
   return dir === 'desc'
     ? <ChevronDown className="w-3 h-3 inline ml-1 text-[var(--color-accent)]" />
@@ -142,25 +142,25 @@ export function TopProcessesCard({ cpuData, memData }: TopProcessesCardProps) {
           <thead>
             <tr className="bg-white/5 border-b border-[var(--color-border)]">
               <th className={thCls('pid')} onClick={() => handleColClick('pid')}>
-                PID <SortIcon col="pid" active={sortCol === 'pid'} dir={sortDir} />
+                PID <SortIcon active={sortCol === 'pid'} dir={sortDir} />
               </th>
               <th className={thCls('name')} onClick={() => handleColClick('name')}>
-                Process <SortIcon col="name" active={sortCol === 'name'} dir={sortDir} />
+                Process <SortIcon active={sortCol === 'name'} dir={sortDir} />
               </th>
               <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px] text-muted">
                 Command / Path
               </th>
               <th className={`${thCls('threads')} text-right`} onClick={() => handleColClick('threads')}>
-                Threads <SortIcon col="threads" active={sortCol === 'threads'} dir={sortDir} />
+                Threads <SortIcon active={sortCol === 'threads'} dir={sortDir} />
               </th>
               <th className={`${thCls('uptime')} text-right`} onClick={() => handleColClick('uptime')}>
-                Uptime <SortIcon col="uptime" active={sortCol === 'uptime'} dir={sortDir} />
+                Uptime <SortIcon active={sortCol === 'uptime'} dir={sortDir} />
               </th>
               <th className={`${thCls('cpu')} text-right`} onClick={() => handleColClick('cpu')}>
-                CPU % <SortIcon col="cpu" active={sortCol === 'cpu'} dir={sortDir} />
+                CPU % <SortIcon active={sortCol === 'cpu'} dir={sortDir} />
               </th>
               <th className={`${thCls('mem')} text-right`} onClick={() => handleColClick('mem')}>
-                MEM % <SortIcon col="mem" active={sortCol === 'mem'} dir={sortDir} />
+                MEM % <SortIcon active={sortCol === 'mem'} dir={sortDir} />
               </th>
             </tr>
           </thead>
