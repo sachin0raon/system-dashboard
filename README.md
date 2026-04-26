@@ -8,12 +8,12 @@ A beautiful, modern, glassmorphic system monitoring dashboard for Linux systems 
 
 ## ✨ Key Features
 
-- **💎 Premium Glassmorphism UI**: High-fidelity design with real-time blur, glow effects, and symmetrical grid layouts.
-- **🚀 Real-Time Telemetry**: Instant system updates via persistent **WebSockets**, replacing traditional HTTP polling for zero-latency data streaming.
-- **📊 Advanced Task Manager**: Track top processes by CPU or Memory with smooth reordering animations and persistence.
-- **🛡️ Power & Thermal Health**: Monitor Raspberry Pi hardware flags for Under-voltage, Throttling, and Temperature limits.
+- **💎 Premium Glassmorphism UI**: High-fidelity design with real-time blur, glow effects, and a **symmetrical 12-column grid** layout.
+- **🚀 Real-Time Telemetry**: Instant system updates via persistent **WebSockets**, using a background broadcast manager for zero-latency data streaming.
+- **📊 Pro Task Manager**: Enhanced 7-column sortable table tracking `PID`, `PPid`, `Threads`, `Uptime`, and `Command` (with tooltips).
+- **🛡️ System Health & Thermal**: Dedicated health tracking for Pi hardware flags (Under-voltage, Throttling) and **spinning PWM Fan speed** monitoring.
 - **🕒 Precision Header**: State-of-the-art real-time clock with vertical rolling digits and data "heartbeat" animations.
-- **📱 Fully Responsive**: Symmetrical 6-column grid that snaps perfectly into a optimized mobile layout.
+- **📱 Responsive Symmetry**: Perfectly balanced grid that snaps from a dense desktop view to an optimized mobile layout.
 
 ---
 
@@ -100,6 +100,48 @@ Open `http://localhost:5173`. Vite proxies `/api` → `http://localhost:8000`.
 
 ---
 
+## Option C: systemd (Native Linux Service)
+
+For a permanent, non-Docker setup on a Raspberry Pi or server.
+
+### 1. Build the Frontend
+```bash
+cd frontend
+npm install
+npm run build
+```
+
+### 2. Create Backend Service
+Create `/etc/systemd/system/rpi-dash-backend.service`:
+```ini
+[Unit]
+Description=Raspberry Pi Dashboard Backend
+After=network.target
+
+[Service]
+User=your_user
+WorkingDirectory=/path/to/rpi-dash/backend
+ExecStart=/path/to/rpi-dash/backend/.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8000
+Restart=always
+Environment=API_KEY=your_secret_key
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### 3. Configure Nginx
+Create a site config in `/etc/nginx/sites-available/rpi-dash` (refer to `nginx/nginx.conf` for optimized headers) pointing `root` to your `frontend/dist` folder and proxying `/api` and `/ws` to `127.0.0.1:8000`.
+
+### 4. Enable Services
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable rpi-dash-backend
+sudo systemctl start rpi-dash-backend
+sudo systemctl restart nginx
+```
+
+---
+
 ## Project Structure
 
 ```
@@ -109,7 +151,7 @@ system-dash/
 │   │   ├── api/socket.ts        # Custom WebSocket hook (useSystemSocket) with auto-reconnect logic
 │   │   ├── components/
 │   │   │   ├── ui/              # GlassCard, MetricBar, StatValue
-│   │   │   ├── widgets/         # CpuCard, MemoryCard, DiskCard, TempCard, NetworkCard, OsCard, TopProcessesCard
+│   │   │   ├── widgets/         # CpuCard, MemoryCard, DiskCard, TemperatureCard, NetworkCard, OsCard, TopProcessesCard, SystemHealthCard
 │   │   │   ├── Header.tsx       # Dynamic clock + connectivity
 │   │   │   ├── RealTimeClock.tsx # Precision animated time component
 │   │   │   └── LoadingStates.tsx
@@ -138,8 +180,9 @@ system-dash/
 |---|---|
 | **CPU** | Overall %, per-core %, frequency, core/thread count |
 | **Memory** | RAM used/total/%, swap used/total/% |
-| **Temperature** | CPU °C, GPU °C, Throttling flags (Under-voltage, Limiters) |
-| **Disk** | Per-partition usage %, read/write bytes/sec |
-| **Network** | Per-interface recv/sent bytes/sec + totals, IP address |
-| **OS Info** | Hostname, platform, kernel, uptime, load avg, process count |
-| **Processes** | Top 5 listed by CPU or Memory (User toggle + Persistence) |
+| **Temperature** | CPU °C, GPU °C, **spinning PWM Fan RPM**, °F secondary readings |
+| **Health** | Under-voltage, Throttling, Freq capping, Load Average (1m/5m/15m) |
+| **Disk** | Per-partition usage %, device paths, fstype, read/write bytes/sec |
+| **Network** | Per-interface recv/sent rates + session totals, IP address |
+| **OS Info** | Hostname, platform, kernel, architecture, boot time, uptime |
+| **Processes** | 7-column table: PID, PPID, User, CPU, Mem, Threads, Uptime, Command |
