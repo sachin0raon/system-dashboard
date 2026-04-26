@@ -1,5 +1,4 @@
 import { Activity, ChevronDown } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '../ui/GlassCard';
 import { CardLabel } from '../ui/StatValue';
 import type { ProcessInfo } from '../../types/metrics';
@@ -67,16 +66,10 @@ export function TopProcessesCard({ cpuData, memData }: TopProcessesCardProps) {
             </tr>
           </thead>
           <tbody>
-            <AnimatePresence initial={false}>
               {activeData.length > 0 ? (
                 activeData.map((proc) => (
-                  <motion.tr
+                  <tr
                     key={proc.pid}
-                    layout="position"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 30, mass: 1 }}
                     className="group hover:bg-white/[0.05] transition-colors border-b border-white/[0.03] last:border-b-0"
                   >
                     <td className="px-4 py-3 text-muted font-mono">{proc.pid}</td>
@@ -95,11 +88,9 @@ export function TopProcessesCard({ cpuData, memData }: TopProcessesCardProps) {
                         </span>
                         {/* Mini bar indicator */}
                         <div className="w-12 h-1 bg-white/5 rounded-full overflow-hidden">
-                          <motion.div 
+                          <div 
                             className={`h-full ${sortBy === 'cpu' ? 'bg-primary' : 'bg-zinc-500'}`}
-                            initial={{ width: 0 }}
-                            animate={{ width: `${Math.min(100, proc.cpu_percent)}%` }}
-                            transition={{ duration: 0.5 }}
+                            style={{ width: `${Math.min(100, proc.cpu_percent)}%` }}
                           />
                         </div>
                       </div>
@@ -110,25 +101,22 @@ export function TopProcessesCard({ cpuData, memData }: TopProcessesCardProps) {
                           {proc.memory_percent.toFixed(1)}%
                         </span>
                         <div className="w-12 h-1 bg-white/5 rounded-full overflow-hidden">
-                          <motion.div 
+                          <div 
                             className={`h-full ${sortBy === 'memory' ? 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.4)]' : 'bg-zinc-500'}`}
-                            initial={{ width: 0 }}
-                            animate={{ width: `${Math.min(100, proc.memory_percent)}%` }}
-                            transition={{ duration: 0.5 }}
+                            style={{ width: `${Math.min(100, proc.memory_percent)}%` }}
                           />
                         </div>
                       </div>
                     </td>
-                  </motion.tr>
+                  </tr>
                 ))
               ) : (
-                <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-muted italic">
                     No intensive processes detected
                   </td>
-                </motion.tr>
+                </tr>
               )}
-            </AnimatePresence>
           </tbody>
         </table>
       </div>

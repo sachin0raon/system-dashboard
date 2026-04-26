@@ -318,6 +318,18 @@ def _get_temperature() -> TemperatureInfo:
         except (OSError, ValueError):
             pass
 
+    # GPU Temp Fallback for Pi in Docker
+    if gpu_celsius is None:
+        try:
+            import subprocess
+            out = subprocess.check_output(["vcgencmd", "measure_temp"], text=True)
+            gpu_celsius = float(out.split("=")[1].replace("'C\n", "").replace("'C", ""))
+        except Exception:
+            # On Raspberry Pi, the CPU and GPU are physically on the same SoC die.
+            # If vcgencmd isn't available (e.g., inside Docker container), 
+            # we safely fall back to the CPU temp.
+            gpu_celsius = cpu_celsius
+
     return TemperatureInfo(
         cpu_celsius=cpu_celsius,
         gpu_celsius=gpu_celsius,
