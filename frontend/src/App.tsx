@@ -8,6 +8,7 @@ import { DiskCard } from './components/widgets/DiskCard';
 import { NetworkCard } from './components/widgets/NetworkCard';
 import { OsCard } from './components/widgets/OsCard';
 import { TopProcessesCard } from './components/widgets/TopProcessesCard';
+import { SystemHealthCard } from './components/widgets/SystemHealthCard';
 import { SkeletonCard } from './components/LoadingStates';
 
 const cardTransition = (i: number): Transition => ({
@@ -97,14 +98,15 @@ function App() {
               'lg:col-span-4',
               'lg:col-span-4',
               'lg:col-span-4',
-              /* Row 2 — compact pair + wide temperature */
+              /* Row 2 — four equal quarters */
               'lg:col-span-3',
               'lg:col-span-3',
-              'lg:col-span-6',
+              'lg:col-span-3',
+              'lg:col-span-3',
               /* Row 3 — full-width process table */
               'lg:col-span-12',
             ].map((className, i) => (
-              <div key={i} className={className}>
+              <div key={i} className={`${className} h-full`}>
                 <SkeletonCard />
               </div>
             ))}
@@ -113,19 +115,20 @@ function App() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
             {[
               /* Row 1 — three equal stat cards */
-              { id: 'cpu',   node: <CpuCard data={data.cpu} />,                                                                     className: 'lg:col-span-4' },
-              { id: 'mem',   node: <MemoryCard data={data.memory} />,                                                               className: 'lg:col-span-4' },
-              { id: 'os',    node: <OsCard data={data.os} />,                                                                       className: 'lg:col-span-4' },
-              /* Row 2 — compact Disk + compact Network share left half; Temperature owns right half */
-              { id: 'disk',  node: <DiskCard data={data.disk} />,                                                                   className: 'lg:col-span-3' },
-              { id: 'net',   node: <NetworkCard data={data.network} />,                                                             className: 'lg:col-span-3' },
-              { id: 'temp',  node: <TemperatureCard data={data.temperature} />,                                                     className: 'md:col-span-2 lg:col-span-6' },
+              { id: 'cpu',    node: <CpuCard data={data.cpu} />,                                                                           className: 'lg:col-span-4' },
+              { id: 'mem',    node: <MemoryCard data={data.memory} />,                                                                     className: 'lg:col-span-4' },
+              { id: 'os',     node: <OsCard data={data.os} />,                                                                             className: 'lg:col-span-4' },
+              /* Row 2 — four equal quarters */
+              { id: 'disk',   node: <DiskCard data={data.disk} />,                                                                         className: 'lg:col-span-3' },
+              { id: 'net',    node: <NetworkCard data={data.network} />,                                                                   className: 'lg:col-span-3' },
+              { id: 'temp',   node: <TemperatureCard data={data.temperature} />,                                                           className: 'lg:col-span-3' },
+              { id: 'health', node: <SystemHealthCard temperature={data.temperature} os={data.os} />,                                      className: 'lg:col-span-3' },
               /* Row 3 — process table gets full width for comfortable columns */
-              { id: 'procs', node: <TopProcessesCard cpuData={data.processes_cpu} memData={data.processes_memory} />,               className: 'md:col-span-2 lg:col-span-12' },
+              { id: 'procs',  node: <TopProcessesCard cpuData={data.processes_cpu} memData={data.processes_memory} />,                     className: 'md:col-span-2 lg:col-span-12' },
             ].map((item, i) => (
               <motion.div
                 key={item.id}
-                className={item.className}
+                className={`${item.className} h-full`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={cardTransition(i)}

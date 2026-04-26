@@ -17,7 +17,7 @@ export function GlassCard({
     <motion.div
       whileHover={glowOnHover ? { scale: 1.015, y: -2 } : undefined}
       transition={{ duration: 0.25, ease: 'easeOut' }}
-      className={cn('glass glass-hover', className)}
+      className={cn('glass glass-hover h-full', className)}
       style={
         accentGlow
           ? { boxShadow: '0 0 32px var(--color-accent-glow)' }
