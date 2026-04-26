@@ -37,6 +37,7 @@ export interface DiskInfo {
 export interface TemperatureInfo {
   cpu_celsius: number | null;
   gpu_celsius: number | null;
+  fan_speed_rpm?: number | null;
   sensors: Record<string, number>;
   is_under_voltage: boolean;
   is_throttled: boolean;

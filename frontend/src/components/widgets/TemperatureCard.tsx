@@ -1,4 +1,4 @@
-import { Thermometer } from 'lucide-react';
+import { Thermometer, Fan } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { GlassCard } from '../ui/GlassCard';
 import { StatValue, CardLabel } from '../ui/StatValue';
@@ -75,20 +75,37 @@ export function TemperatureCard({ data }: TemperatureCardProps) {
 
   return (
     <GlassCard className="p-6 space-y-5">
-      <div className="flex items-center gap-3">
-        <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center"
-          style={{ background: 'rgba(239, 68, 68, 0.12)' }}
-        >
-          <Thermometer
-            className="w-5 h-5"
-            style={{ color: 'var(--color-danger)', filter: 'drop-shadow(0 0 6px var(--color-danger-glow))' }}
-          />
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(239, 68, 68, 0.12)' }}
+          >
+            <Thermometer
+              className="w-5 h-5"
+              style={{ color: 'var(--color-danger)', filter: 'drop-shadow(0 0 6px var(--color-danger-glow))' }}
+            />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold">Temperature</h2>
+            <CardLabel>Thermal Sensors</CardLabel>
+          </div>
         </div>
-        <div>
-          <h2 className="text-sm font-semibold">Temperature</h2>
-          <CardLabel>Thermal Sensors</CardLabel>
-        </div>
+
+        {data.fan_speed_rpm !== undefined && data.fan_speed_rpm !== null && (
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg shrink-0"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: data.fan_speed_rpm > 0 ? 6000 / data.fan_speed_rpm : 0, ease: 'linear' }}
+            >
+              <Fan className="w-3.5 h-3.5 text-secondary" />
+            </motion.div>
+            <span className="text-[11px] font-mono font-bold text-white">{data.fan_speed_rpm.toFixed(0)} <span className="text-[9px] text-muted font-sans font-normal">RPM</span></span>
+          </div>
+        )}
       </div>
 
       {/* Gauges */}

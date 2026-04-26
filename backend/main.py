@@ -134,6 +134,7 @@ class DiskInfo(BaseModel):
 class TemperatureInfo(BaseModel):
     cpu_celsius: Optional[float]
     gpu_celsius: Optional[float]
+    fan_speed_rpm: Optional[float] = None
     sensors: Dict[str, float]
     is_under_voltage: bool = False
     is_throttled: bool = False
@@ -275,6 +276,7 @@ def _get_disk() -> DiskInfo:
 def _get_temperature() -> TemperatureInfo:
     cpu_celsius: Optional[float] = None
     gpu_celsius: Optional[float] = None
+    fan_speed_rpm: Optional[float] = None
     sensors: Dict[str, float] = {}
 
     is_under_voltage = False
@@ -314,6 +316,17 @@ def _get_temperature() -> TemperatureInfo:
         # Some platforms don't support sensors_temperatures
         pass
 
+    # Try to get PWM fan speed
+    try:
+        if hasattr(psutil, "sensors_fans"):
+            fans = psutil.sensors_fans()
+            for name, entries in fans.items():
+                if entries:
+                    fan_speed_rpm = entries[0].current
+                    break
+    except Exception:
+        pass
+
     # Fallback for Pi using /sys/class/thermal
     if cpu_celsius is None:
         try:
@@ -337,6 +350,7 @@ def _get_temperature() -> TemperatureInfo:
     return TemperatureInfo(
         cpu_celsius=cpu_celsius,
         gpu_celsius=gpu_celsius,
+        fan_speed_rpm=fan_speed_rpm,
         sensors=sensors,
         is_under_voltage=is_under_voltage,
         is_throttled=is_throttled,
