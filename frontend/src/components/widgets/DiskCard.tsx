@@ -66,12 +66,12 @@ export function DiskCard({ data }: DiskCardProps) {
       <div className="space-y-4">
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <div className="truncate pr-2">
-              <span className="text-sm font-medium truncate">{currentPartition.mountpoint}</span>
-              <span className="ml-2 text-muted text-[10px] font-mono opacity-70">
-                {currentPartition.device} · {currentPartition.fstype}
-              </span>
-            </div>
+          <div className="flex items-center gap-2 pr-2">
+            <span className="text-sm font-medium truncate">{currentPartition.mountpoint}</span>
+            <span className="px-1.5 py-0.5 rounded-md bg-white/5 text-[9px] font-mono text-secondary border border-white/5 uppercase">
+              {currentPartition.fstype}
+            </span>
+          </div>
             <StatValue
               value={currentPartition.percent.toFixed(1)}
               unit="%"
@@ -85,35 +85,51 @@ export function DiskCard({ data }: DiskCardProps) {
             thresholds={{ warn: 70, danger: 90 }}
           />
           <div className="flex justify-between text-xs text-secondary font-mono">
-            <div className="flex gap-2">
-              <span>{formatBytes(currentPartition.used_bytes)} used</span>
-              <span className="opacity-40">|</span>
-              <span>{currentPartition.inodes_percent.toFixed(1)}% inodes</span>
-            </div>
+            <span>{formatBytes(currentPartition.used_bytes)} used</span>
             <span>{formatBytes(currentPartition.free_bytes)} free of {formatBytes(currentPartition.total_bytes)}</span>
           </div>
         </div>
       </div>
 
-      {/* I/O stats */}
+      {/* I/O stats & Inodes */}
       <div className="grid grid-cols-2 gap-3 pt-1">
         <div
           className="rounded-xl px-4 py-3 text-center"
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}
         >
-          <CardLabel className="mb-1">
-            Read / s <span className="lowercase opacity-50 font-normal">({data.read_count_per_sec.toFixed(0)} ops)</span>
-          </CardLabel>
+          <CardLabel className="mb-0.5">Read / s</CardLabel>
+          <div className="text-[10px] opacity-40 font-mono mb-1.5">
+            ({data.read_count_per_sec.toFixed(0)} ops)
+          </div>
           <StatValue value={formatBytes(data.read_bytes_per_sec)} size="sm" color="#eab308" />
         </div>
         <div
           className="rounded-xl px-4 py-3 text-center"
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}
         >
-          <CardLabel className="mb-1">
-            Write / s <span className="lowercase opacity-50 font-normal">({data.write_count_per_sec.toFixed(0)} ops)</span>
-          </CardLabel>
+          <CardLabel className="mb-0.5">Write / s</CardLabel>
+          <div className="text-[10px] opacity-40 font-mono mb-1.5">
+            ({data.write_count_per_sec.toFixed(0)} ops)
+          </div>
           <StatValue value={formatBytes(data.write_bytes_per_sec)} size="sm" color="var(--color-warn)" />
+        </div>
+
+        <div
+          className="rounded-xl px-3 py-2 flex flex-col justify-center"
+          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)' }}
+        >
+          <CardLabel className="text-[9px] mb-0.5">Filesystem</CardLabel>
+          <div className="text-[10px] font-mono text-secondary truncate">{currentPartition.device}</div>
+        </div>
+        <div
+          className="rounded-xl px-3 py-2 flex flex-col justify-center"
+          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)' }}
+        >
+          <CardLabel className="text-[9px] mb-0.5">Inodes Usage</CardLabel>
+          <div className="flex justify-between items-baseline">
+            <span className="text-[10px] font-mono text-secondary">{currentPartition.inodes_percent.toFixed(1)}%</span>
+            <span className="text-[8px] font-mono opacity-30">{(currentPartition.inodes_used / 1000).toFixed(1)}k / {(currentPartition.inodes_total / 1000).toFixed(1)}k</span>
+          </div>
         </div>
       </div>
     </GlassCard>

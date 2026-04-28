@@ -72,7 +72,7 @@ export function NetworkCard({ data }: NetworkCardProps) {
       </div>
 
       <div
-        className="rounded-xl p-4 space-y-4"
+        className="rounded-xl p-4 space-y-3"
         style={{
           background: 'rgba(255,255,255,0.04)',
           border: '1px solid var(--color-border)',
@@ -88,7 +88,7 @@ export function NetworkCard({ data }: NetworkCardProps) {
             )}
           </div>
           <motion.div
-            className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0"
+            className="w-2 h-2 rounded-full mt-1.5 shrink-0"
             style={{
               background: 'var(--color-ok)',
               boxShadow: '0 0 6px var(--color-ok-glow)',
@@ -98,39 +98,51 @@ export function NetworkCard({ data }: NetworkCardProps) {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 pt-1">
-          <div>
-            <CardLabel className="mb-1">
-              ↓ Recv/s <span className="lowercase opacity-50 font-normal">({currentIface.packets_recv_per_sec.toFixed(0)} pkts)</span>
-            </CardLabel>
-            <StatValue
-              value={formatBytes(currentIface.bytes_recv_per_sec)}
-              size="sm"
-              color="var(--color-ok)"
-            />
-          </div>
-          <div>
-            <CardLabel className="mb-1">
-              ↑ Sent/s <span className="lowercase opacity-50 font-normal">({currentIface.packets_sent_per_sec.toFixed(0)} pkts)</span>
-            </CardLabel>
-            <StatValue
-              value={formatBytes(currentIface.bytes_sent_per_sec)}
-              size="sm"
-              color="var(--color-accent)"
-            />
-          </div>
+        <div className="grid grid-cols-2 gap-4 pt-1 border-t border-white/5">
           <div>
             <CardLabel className="mb-1">
               Total Recv {currentIface.errors_total > 0 && <span className="text-danger opacity-80 lowercase">({currentIface.errors_total} err)</span>}
             </CardLabel>
-            <StatValue value={formatBytes(currentIface.bytes_recv_total)} size="sm" />
+            <StatValue value={formatBytes(currentIface.bytes_recv_total)} size="xs" />
           </div>
           <div>
             <CardLabel className="mb-1">
               Total Sent {currentIface.drops_total > 0 && <span className="text-warn opacity-80 lowercase">({currentIface.drops_total} drop)</span>}
             </CardLabel>
-            <StatValue value={formatBytes(currentIface.bytes_sent_total)} size="sm" />
+            <StatValue value={formatBytes(currentIface.bytes_sent_total)} size="xs" />
           </div>
+        </div>
+      </div>
+
+      {/* Real-time stats */}
+      <div className="grid grid-cols-2 gap-3 pt-1">
+        <div
+          className="rounded-xl px-4 py-3 text-center"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}
+        >
+          <CardLabel className="mb-0.5">↓ Recv / s</CardLabel>
+          <div className="text-[10px] opacity-40 font-mono mb-1.5">
+            ({currentIface.packets_recv_per_sec.toFixed(0)} pkts)
+          </div>
+          <StatValue
+            value={formatBytes(currentIface.bytes_recv_per_sec)}
+            size="sm"
+            color="var(--color-ok)"
+          />
+        </div>
+        <div
+          className="rounded-xl px-4 py-3 text-center"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}
+        >
+          <CardLabel className="mb-0.5">↑ Sent / s</CardLabel>
+          <div className="text-[10px] opacity-40 font-mono mb-1.5">
+            ({currentIface.packets_sent_per_sec.toFixed(0)} pkts)
+          </div>
+          <StatValue
+            value={formatBytes(currentIface.bytes_sent_per_sec)}
+            size="sm"
+            color="var(--color-accent)"
+          />
         </div>
       </div>
     </GlassCard>

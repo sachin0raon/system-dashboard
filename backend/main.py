@@ -127,6 +127,9 @@ class DiskPartition(BaseModel):
     free_bytes: int
     percent: float
     inodes_percent: float = 0.0
+    inodes_total: int = 0
+    inodes_used: int = 0
+    inodes_free: int = 0
 
 
 class DiskInfo(BaseModel):
@@ -277,6 +280,9 @@ def _get_disk() -> DiskInfo:
                     free_bytes=usage.free,
                     percent=usage.percent,
                     inodes_percent=getattr(usage, 'inodes_percent', 0.0),
+                    inodes_total=getattr(usage, 'inodes', 0),
+                    inodes_used=getattr(usage, 'inodes_used', 0),
+                    inodes_free=getattr(usage, 'inodes_free', 0),
                 )
             )
         except (PermissionError, OSError):
@@ -465,17 +471,23 @@ def _get_os() -> OsInfo:
     except Exception:
         hostname = uname.node
 
-    # Try to get a readable OS version
+    # Try to get a readable OS version from /etc/os-release
+    os_name = uname.system
+    os_version = uname.release
     try:
-        with open("/etc/os-release") as f:
-            os_release = dict(
-                line.strip().split("=", 1) for line in f if "=" in line
-            )
-        os_name = os_release.get("NAME", uname.system).strip('"')
-        os_version = os_release.get("VERSION_ID", uname.release).strip('"')
+        if os.path.exists("/etc/os-release"):
+            with open("/etc/os-release") as f:
+                os_release = {}
+                for line in f:
+                    if "=" in line:
+                        k, v = line.strip().split("=", 1)
+                        os_release[k] = v.strip('"')
+            
+            # Use PRETTY_NAME for os_name if available, fallback to NAME
+            os_name = os_release.get("PRETTY_NAME", os_release.get("NAME", uname.system))
+            os_version = os_release.get("VERSION_ID", uname.release)
     except Exception:
-        os_name = uname.system
-        os_version = uname.version
+        pass
 
     return OsInfo(
         hostname=hostname,
@@ -483,6 +495,7 @@ def _get_os() -> OsInfo:
         os_version=os_version,
         kernel=uname.release,
         architecture=uname.machine,
+
         uptime_seconds=uptime,
         boot_time=datetime.fromtimestamp(boot_ts, tz=timezone.utc).isoformat(),
         load_avg_1=load[0],

@@ -30,6 +30,9 @@ export interface DiskPartition {
   free_bytes: number;
   percent: number;
   inodes_percent: number;
+  inodes_total: number;
+  inodes_used: number;
+  inodes_free: number;
 }
 
 export interface DiskInfo {

@@ -40,21 +40,31 @@ export function MemoryCard({ data }: MemoryCardProps) {
         />
       </div>
 
-      {/* RAM */}
-      <div className="space-y-2">
-        <MetricBar
-          value={data.percent}
-          label="RAM"
-          color="#a78bfa"
-          thresholds={{ warn: 70, danger: 90 }}
-        />
-        <div className="flex justify-between text-xs text-secondary font-mono">
-          <div className="flex gap-2">
-            <span>{formatBytes(data.used_bytes)} used</span>
-            <span className="opacity-40">|</span>
-            <span>{formatBytes(data.cached_bytes || 0)} cache</span>
+      {/* Memory Usage */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <MetricBar
+            value={data.percent}
+            label="RAM"
+            color="#a78bfa"
+            thresholds={{ warn: 70, danger: 90 }}
+          />
+          <div className="flex justify-between text-[10px] text-secondary font-mono">
+            <span>{formatBytes(data.used_bytes)}</span>
+            <span className="opacity-40">/</span>
+            <span>{formatBytes(data.total_bytes)}</span>
           </div>
-          <span>{formatBytes(data.total_bytes)} total</span>
+        </div>
+        <div className="space-y-2">
+          <MetricBar
+            value={(data.cached_bytes / data.total_bytes) * 100}
+            label="Cache"
+            color="#8b5cf6"
+            thresholds={{ warn: 70, danger: 90 }}
+          />
+          <div className="text-[10px] text-secondary font-mono">
+            {formatBytes(data.cached_bytes)}
+          </div>
         </div>
       </div>
 

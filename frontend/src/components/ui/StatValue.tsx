@@ -3,13 +3,14 @@ import { cn } from '../../lib/utils';
 interface StatValueProps {
   value: string | number;
   unit?: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   color?: string;
   className?: string;
 }
 
 export function StatValue({ value, unit, size = 'lg', color, className }: StatValueProps) {
   const sizeMap = {
+    xs: 'text-sm',
     sm: 'text-lg',
     md: 'text-2xl',
     lg: 'text-3xl',
