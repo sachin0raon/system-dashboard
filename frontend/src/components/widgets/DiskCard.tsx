@@ -68,7 +68,9 @@ export function DiskCard({ data }: DiskCardProps) {
           <div className="flex justify-between items-center">
             <div className="truncate pr-2">
               <span className="text-sm font-medium truncate">{currentPartition.mountpoint}</span>
-              <span className="ml-2 text-muted text-xs font-mono">{currentPartition.fstype}</span>
+              <span className="ml-2 text-muted text-[10px] font-mono opacity-70">
+                {currentPartition.device} · {currentPartition.fstype}
+              </span>
             </div>
             <StatValue
               value={currentPartition.percent.toFixed(1)}
@@ -83,7 +85,11 @@ export function DiskCard({ data }: DiskCardProps) {
             thresholds={{ warn: 70, danger: 90 }}
           />
           <div className="flex justify-between text-xs text-secondary font-mono">
-            <span>{formatBytes(currentPartition.used_bytes)} used</span>
+            <div className="flex gap-2">
+              <span>{formatBytes(currentPartition.used_bytes)} used</span>
+              <span className="opacity-40">|</span>
+              <span>{currentPartition.inodes_percent.toFixed(1)}% inodes</span>
+            </div>
             <span>{formatBytes(currentPartition.free_bytes)} free of {formatBytes(currentPartition.total_bytes)}</span>
           </div>
         </div>
@@ -95,14 +101,18 @@ export function DiskCard({ data }: DiskCardProps) {
           className="rounded-xl px-4 py-3 text-center"
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}
         >
-          <CardLabel className="mb-1">Read / s</CardLabel>
+          <CardLabel className="mb-1">
+            Read / s <span className="lowercase opacity-50 font-normal">({data.read_count_per_sec.toFixed(0)} ops)</span>
+          </CardLabel>
           <StatValue value={formatBytes(data.read_bytes_per_sec)} size="sm" color="#eab308" />
         </div>
         <div
           className="rounded-xl px-4 py-3 text-center"
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}
         >
-          <CardLabel className="mb-1">Write / s</CardLabel>
+          <CardLabel className="mb-1">
+            Write / s <span className="lowercase opacity-50 font-normal">({data.write_count_per_sec.toFixed(0)} ops)</span>
+          </CardLabel>
           <StatValue value={formatBytes(data.write_bytes_per_sec)} size="sm" color="var(--color-warn)" />
         </div>
       </div>

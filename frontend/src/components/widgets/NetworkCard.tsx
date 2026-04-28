@@ -82,7 +82,9 @@ export function NetworkCard({ data }: NetworkCardProps) {
           <div className="truncate pr-2">
             <p className="text-sm font-semibold font-mono truncate">{currentIface.name}</p>
             {currentIface.ip_address && (
-              <p className="text-xs text-secondary font-mono mt-0.5 truncate">{currentIface.ip_address}</p>
+              <p className="text-xs text-secondary font-mono mt-0.5 truncate">
+                {currentIface.ip_address} {currentIface.speed_mbps > 0 && `· ${currentIface.speed_mbps} Mbps`}
+              </p>
             )}
           </div>
           <motion.div
@@ -98,7 +100,9 @@ export function NetworkCard({ data }: NetworkCardProps) {
 
         <div className="grid grid-cols-2 gap-4 pt-1">
           <div>
-            <CardLabel className="mb-1">↓ Recv/s</CardLabel>
+            <CardLabel className="mb-1">
+              ↓ Recv/s <span className="lowercase opacity-50 font-normal">({currentIface.packets_recv_per_sec.toFixed(0)} pkts)</span>
+            </CardLabel>
             <StatValue
               value={formatBytes(currentIface.bytes_recv_per_sec)}
               size="sm"
@@ -106,7 +110,9 @@ export function NetworkCard({ data }: NetworkCardProps) {
             />
           </div>
           <div>
-            <CardLabel className="mb-1">↑ Sent/s</CardLabel>
+            <CardLabel className="mb-1">
+              ↑ Sent/s <span className="lowercase opacity-50 font-normal">({currentIface.packets_sent_per_sec.toFixed(0)} pkts)</span>
+            </CardLabel>
             <StatValue
               value={formatBytes(currentIface.bytes_sent_per_sec)}
               size="sm"
@@ -114,11 +120,15 @@ export function NetworkCard({ data }: NetworkCardProps) {
             />
           </div>
           <div>
-            <CardLabel className="mb-1">Total Recv</CardLabel>
+            <CardLabel className="mb-1">
+              Total Recv {currentIface.errors_total > 0 && <span className="text-danger opacity-80 lowercase">({currentIface.errors_total} err)</span>}
+            </CardLabel>
             <StatValue value={formatBytes(currentIface.bytes_recv_total)} size="sm" />
           </div>
           <div>
-            <CardLabel className="mb-1">Total Sent</CardLabel>
+            <CardLabel className="mb-1">
+              Total Sent {currentIface.drops_total > 0 && <span className="text-warn opacity-80 lowercase">({currentIface.drops_total} drop)</span>}
+            </CardLabel>
             <StatValue value={formatBytes(currentIface.bytes_sent_total)} size="sm" />
           </div>
         </div>

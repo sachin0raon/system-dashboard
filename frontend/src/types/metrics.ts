@@ -16,6 +16,7 @@ export interface MemoryInfo {
   swap_total_bytes: number;
   swap_used_bytes: number;
   swap_percent: number;
+  cached_bytes: number;
 }
 
 export interface DiskPartition {
@@ -26,12 +27,15 @@ export interface DiskPartition {
   used_bytes: number;
   free_bytes: number;
   percent: number;
+  inodes_percent: number;
 }
 
 export interface DiskInfo {
   partitions: DiskPartition[];
   read_bytes_per_sec: number;
   write_bytes_per_sec: number;
+  read_count_per_sec: number;
+  write_count_per_sec: number;
 }
 
 export interface TemperatureInfo {
@@ -51,6 +55,11 @@ export interface NetworkInterface {
   bytes_recv_per_sec: number;
   bytes_sent_total: number;
   bytes_recv_total: number;
+  packets_sent_per_sec: number;
+  packets_recv_per_sec: number;
+  errors_total: number;
+  drops_total: number;
+  speed_mbps: number;
   ip_address: string | null;
 }
 

@@ -113,6 +113,7 @@ class MemoryInfo(BaseModel):
     swap_total_bytes: int
     swap_used_bytes: int
     swap_percent: float
+    cached_bytes: int = 0
 
 
 class DiskPartition(BaseModel):
@@ -123,12 +124,15 @@ class DiskPartition(BaseModel):
     used_bytes: int
     free_bytes: int
     percent: float
+    inodes_percent: float = 0.0
 
 
 class DiskInfo(BaseModel):
     partitions: List[DiskPartition]
     read_bytes_per_sec: float
     write_bytes_per_sec: float
+    read_count_per_sec: float = 0.0
+    write_count_per_sec: float = 0.0
 
 
 class TemperatureInfo(BaseModel):
@@ -148,6 +152,11 @@ class NetworkInterface(BaseModel):
     bytes_recv_per_sec: float
     bytes_sent_total: int
     bytes_recv_total: int
+    packets_sent_per_sec: float = 0.0
+    packets_recv_per_sec: float = 0.0
+    errors_total: int = 0
+    drops_total: int = 0
+    speed_mbps: int = 0
     ip_address: Optional[str]
 
 
@@ -227,6 +236,7 @@ def _get_memory() -> MemoryInfo:
         swap_total_bytes=sw.total,
         swap_used_bytes=sw.used,
         swap_percent=sw.percent,
+        cached_bytes=getattr(vm, 'cached', 0),
     )
 
 
@@ -246,13 +256,14 @@ def _get_disk() -> DiskInfo:
                     used_bytes=usage.used,
                     free_bytes=usage.free,
                     percent=usage.percent,
+                    inodes_percent=getattr(usage, 'inodes_percent', 0.0),
                 )
             )
         except (PermissionError, OSError):
             continue
 
     # Disk I/O delta
-    read_bps = write_bps = 0.0
+    read_bps = write_bps = read_ops = write_ops = 0.0
     now = time.monotonic()
     try:
         cur_io = psutil.disk_io_counters()
@@ -261,6 +272,8 @@ def _get_disk() -> DiskInfo:
             if dt > 0:
                 read_bps = (cur_io.read_bytes - _prev_disk_io.read_bytes) / dt
                 write_bps = (cur_io.write_bytes - _prev_disk_io.write_bytes) / dt
+                read_ops = (cur_io.read_count - _prev_disk_io.read_count) / dt
+                write_ops = (cur_io.write_count - _prev_disk_io.write_count) / dt
         _prev_disk_io = cur_io
         _prev_disk_time = now
     except (OSError, PermissionError):
@@ -270,6 +283,8 @@ def _get_disk() -> DiskInfo:
         partitions=partitions,
         read_bytes_per_sec=max(read_bps, 0),
         write_bytes_per_sec=max(write_bps, 0),
+        read_count_per_sec=max(read_ops, 0),
+        write_count_per_sec=max(write_ops, 0),
     )
 
 
@@ -367,15 +382,23 @@ def _get_network() -> NetworkInfo:
 
     try:
         cur_net = psutil.net_io_counters(pernic=True)
+        stats = psutil.net_if_stats()
         addrs = psutil.net_if_addrs()
         dt = now - _prev_net_time if _prev_net_io else 0
 
-        for name, stats in cur_net.items():
-            sent_bps = recv_bps = 0.0
+        for name, io in cur_net.items():
+            sent_bps = recv_bps = sent_pps = recv_pps = 0.0
             if _prev_net_io and name in _prev_net_io and dt > 0:
-                sent_bps = (stats.bytes_sent - _prev_net_io[name].bytes_sent) / dt
-                recv_bps = (stats.bytes_recv - _prev_net_io[name].bytes_recv) / dt
+                prev_io = _prev_net_io[name]
+                sent_bps = (io.bytes_sent - prev_io.bytes_sent) / dt
+                recv_bps = (io.bytes_recv - prev_io.bytes_recv) / dt
+                sent_pps = (io.packets_sent - prev_io.packets_sent) / dt
+                recv_pps = (io.packets_recv - prev_io.packets_recv) / dt
 
+            # Get interface stats (speed)
+            iface_stats = stats.get(name)
+            speed = iface_stats.speed if iface_stats else 0
+            
             # Get first IPv4 address
             ip = None
             for addr in addrs.get(name, []):
@@ -388,8 +411,13 @@ def _get_network() -> NetworkInfo:
                     name=name,
                     bytes_sent_per_sec=max(sent_bps, 0),
                     bytes_recv_per_sec=max(recv_bps, 0),
-                    bytes_sent_total=stats.bytes_sent,
-                    bytes_recv_total=stats.bytes_recv,
+                    packets_sent_per_sec=max(sent_pps, 0),
+                    packets_recv_per_sec=max(recv_pps, 0),
+                    bytes_sent_total=io.bytes_sent,
+                    bytes_recv_total=io.bytes_recv,
+                    errors_total=io.errin + io.errout,
+                    drops_total=io.dropin + io.dropout,
+                    speed_mbps=speed,
                     ip_address=ip,
                 )
             )

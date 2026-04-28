@@ -49,7 +49,11 @@ export function MemoryCard({ data }: MemoryCardProps) {
           thresholds={{ warn: 70, danger: 90 }}
         />
         <div className="flex justify-between text-xs text-secondary font-mono">
-          <span>{formatBytes(data.used_bytes)} used</span>
+          <div className="flex gap-2">
+            <span>{formatBytes(data.used_bytes)} used</span>
+            <span className="opacity-40">|</span>
+            <span>{formatBytes(data.cached_bytes || 0)} cache</span>
+          </div>
           <span>{formatBytes(data.total_bytes)} total</span>
         </div>
       </div>
