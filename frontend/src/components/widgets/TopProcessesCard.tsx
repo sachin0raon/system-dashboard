@@ -10,7 +10,7 @@ interface TopProcessesCardProps {
 }
 
 type SortSource = 'cpu' | 'memory';
-type SortCol = 'pid' | 'name' | 'cpu' | 'mem' | 'threads' | 'uptime';
+type SortCol = 'pid' | 'name' | 'cpu' | 'mem' | 'threads' | 'uptime' | 'cmd';
 type SortDir = 'asc' | 'desc';
 
 /** Human-readable uptime from epoch seconds */
@@ -47,21 +47,22 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
 }
 
 export function TopProcessesCard({ cpuData, memData }: TopProcessesCardProps) {
-  const [sortSource, setSortSource] = useState<SortSource>(() =>
-    (localStorage.getItem('process-sort-by') as SortSource) || 'cpu'
-  );
   const [sortCol, setSortCol] = useState<SortCol>('cpu');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
-  useEffect(() => {
-    localStorage.setItem('process-sort-by', sortSource);
-  }, [sortSource]);
-
-  // Deduplicate by PID (merge cpu & mem lists), keeping the richest data
+  // Deduplicate by PID (merge cpu & mem lists) to show all "intensive" processes
   const merged = useMemo<ProcessInfo[]>(() => {
-    const base = sortSource === 'cpu' ? cpuData : memData;
-    return base;
-  }, [sortSource, cpuData, memData]);
+    const combined = [...cpuData, ...memData];
+    const unique = new Map<number, ProcessInfo>();
+    
+    combined.forEach(p => {
+      // If we see the same PID twice, the one in cpuData usually has fresher CPU %
+      // but they should be very similar. We just ensure uniqueness here.
+      unique.set(p.pid, p);
+    });
+    
+    return Array.from(unique.values());
+  }, [cpuData, memData]);
 
   const sorted = useMemo(() => {
     const arr = [...merged];
@@ -74,6 +75,7 @@ export function TopProcessesCard({ cpuData, memData }: TopProcessesCardProps) {
         case 'mem':      av = a.memory_percent;  bv = b.memory_percent;  break;
         case 'threads':  av = a.num_threads;     bv = b.num_threads;     break;
         case 'uptime':   av = a.create_time;     bv = b.create_time;     break;
+        case 'cmd':      av = a.cmdline.toLowerCase(); bv = b.cmdline.toLowerCase(); break;
         default:         av = a.cpu_percent;     bv = b.cpu_percent;
       }
       if (av < bv) return sortDir === 'asc' ? -1 : 1;
@@ -112,26 +114,7 @@ export function TopProcessesCard({ cpuData, memData }: TopProcessesCardProps) {
           </div>
           <div>
             <h2 className="text-sm font-semibold">Top Processes</h2>
-            <CardLabel>Live Task Manager · {sorted.length} shown</CardLabel>
-          </div>
-        </div>
-
-        {/* Sort source selector */}
-        <div className="relative group/select">
-          <select
-            value={sortSource}
-            onChange={(e) => {
-              setSortSource(e.target.value as SortSource);
-              setSortCol(e.target.value === 'cpu' ? 'cpu' : 'mem');
-              setSortDir('desc');
-            }}
-            className="appearance-none bg-white/[0.05] hover:bg-white/[0.1] text-xs font-semibold py-1.5 pl-3 pr-8 rounded-lg border border-white/10 outline-none cursor-pointer transition-all text-white/80"
-          >
-            <option value="cpu">By CPU %</option>
-            <option value="memory">By Memory %</option>
-          </select>
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-muted">
-            <ChevronDown className="w-3.5 h-3.5" />
+            <CardLabel>Live Task Manager · {sorted.length} unique tasks</CardLabel>
           </div>
         </div>
       </div>
@@ -147,8 +130,8 @@ export function TopProcessesCard({ cpuData, memData }: TopProcessesCardProps) {
               <th className={thCls('name')} onClick={() => handleColClick('name')}>
                 Process <SortIcon active={sortCol === 'name'} dir={sortDir} />
               </th>
-              <th className="px-4 py-3 font-semibold uppercase tracking-wider text-[10px] text-muted">
-                Command / Path
+              <th className={thCls('cmd')} onClick={() => handleColClick('cmd')}>
+                Command / Path <SortIcon active={sortCol === 'cmd'} dir={sortDir} />
               </th>
               <th className={`${thCls('threads')} text-right`} onClick={() => handleColClick('threads')}>
                 Threads <SortIcon active={sortCol === 'threads'} dir={sortDir} />
@@ -231,7 +214,7 @@ export function TopProcessesCard({ cpuData, memData }: TopProcessesCardProps) {
                       <div className="flex flex-col items-end gap-1">
                         <span
                           className={`font-mono font-bold text-[11px] ${
-                            sortSource === 'cpu' ? 'text-[var(--color-primary)]' : 'text-zinc-400'
+                            sortCol === 'cpu' ? 'text-[var(--color-primary)]' : 'text-zinc-400'
                           }`}
                         >
                           {proc.cpu_percent.toFixed(1)}%
@@ -241,7 +224,7 @@ export function TopProcessesCard({ cpuData, memData }: TopProcessesCardProps) {
                             className="h-full rounded-full transition-all duration-500"
                             style={{
                               width: `${Math.min(100, proc.cpu_percent)}%`,
-                              background: sortSource === 'cpu'
+                              background: sortCol === 'cpu'
                                 ? 'var(--color-primary)'
                                 : 'rgba(161,161,170,0.5)',
                             }}
@@ -255,7 +238,7 @@ export function TopProcessesCard({ cpuData, memData }: TopProcessesCardProps) {
                       <div className="flex flex-col items-end gap-1">
                         <span
                           className={`font-mono font-bold text-[11px] ${
-                            sortSource === 'memory' ? 'text-purple-400' : 'text-zinc-400'
+                            sortCol === 'mem' ? 'text-purple-400' : 'text-zinc-400'
                           }`}
                         >
                           {proc.memory_percent.toFixed(1)}%
@@ -265,7 +248,7 @@ export function TopProcessesCard({ cpuData, memData }: TopProcessesCardProps) {
                             className="h-full rounded-full transition-all duration-500"
                             style={{
                               width: `${Math.min(100, proc.memory_percent)}%`,
-                              background: sortSource === 'memory'
+                              background: sortCol === 'mem'
                                 ? 'rgb(168,85,247)'
                                 : 'rgba(161,161,170,0.5)',
                             }}
