@@ -82,7 +82,7 @@ export function NetworkCard({ data }: NetworkCardProps) {
           <div className="truncate pr-2">
             <p className="text-sm font-semibold font-mono truncate">{currentIface.name}</p>
             {currentIface.ip_address && (
-              <p className="text-xs text-secondary font-mono mt-0.5 truncate">
+              <p className="text-xs font-mono mt-0.5 truncate" style={{ color: 'rgba(34, 197, 94, 0.7)' }}>
                 {currentIface.ip_address} {currentIface.speed_mbps > 0 && `· ${currentIface.speed_mbps} Mbps`}
               </p>
             )}
@@ -100,16 +100,16 @@ export function NetworkCard({ data }: NetworkCardProps) {
 
         <div className="grid grid-cols-2 gap-4 pt-1 border-t border-white/5">
           <div>
-            <CardLabel className="mb-1">
+            <CardLabel className="mb-1 text-[var(--color-ok)]/60">
               Total Recv {currentIface.errors_total > 0 && <span className="text-danger opacity-80 lowercase">({currentIface.errors_total} err)</span>}
             </CardLabel>
-            <StatValue value={formatBytes(currentIface.bytes_recv_total)} size="xs" />
+            <StatValue value={formatBytes(currentIface.bytes_recv_total)} size="xs" color="var(--color-ok)" />
           </div>
           <div>
-            <CardLabel className="mb-1">
+            <CardLabel className="mb-1 text-[var(--color-accent)]/60">
               Total Sent {currentIface.drops_total > 0 && <span className="text-warn opacity-80 lowercase">({currentIface.drops_total} drop)</span>}
             </CardLabel>
-            <StatValue value={formatBytes(currentIface.bytes_sent_total)} size="xs" />
+            <StatValue value={formatBytes(currentIface.bytes_sent_total)} size="xs" color="var(--color-accent)" />
           </div>
         </div>
       </div>
@@ -121,7 +121,7 @@ export function NetworkCard({ data }: NetworkCardProps) {
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}
         >
           <CardLabel className="mb-0.5">↓ Recv / s</CardLabel>
-          <div className="text-[10px] opacity-40 font-mono mb-1.5">
+          <div className="text-[10px] font-mono mb-1.5" style={{ color: 'rgba(34, 197, 94, 0.5)' }}>
             ({currentIface.packets_recv_per_sec.toFixed(0)} pkts)
           </div>
           <StatValue
@@ -135,7 +135,7 @@ export function NetworkCard({ data }: NetworkCardProps) {
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}
         >
           <CardLabel className="mb-0.5">↑ Sent / s</CardLabel>
-          <div className="text-[10px] opacity-40 font-mono mb-1.5">
+          <div className="text-[10px] font-mono mb-1.5" style={{ color: 'rgba(34, 211, 238, 0.5)' }}>
             ({currentIface.packets_sent_per_sec.toFixed(0)} pkts)
           </div>
           <StatValue

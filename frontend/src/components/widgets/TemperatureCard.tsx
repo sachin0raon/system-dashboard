@@ -96,9 +96,6 @@ export function TemperatureCard({ data, cpu }: TemperatureCardProps) {
               <CardLabel>CPU & System Activity</CardLabel>
             </div>
           </div>
-          <div className="bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded text-[10px] text-sky-400 font-bold uppercase tracking-wider">
-            VM Mode
-          </div>
         </div>
 
         <div className="flex justify-around pt-2">
