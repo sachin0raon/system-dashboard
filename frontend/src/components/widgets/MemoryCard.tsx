@@ -82,6 +82,24 @@ export function MemoryCard({ data }: MemoryCardProps) {
         </div>
       </div>
 
+      {/* Additional Stats */}
+      <div className="grid grid-cols-2 gap-3 pt-1">
+        <div
+          className="rounded-xl px-3 py-2 flex flex-col justify-center"
+          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)' }}
+        >
+          <CardLabel className="text-[9px] mb-0.5 text-[#a78bfa]/60">Buffers</CardLabel>
+          <div className="text-[10px] font-mono text-[#a78bfa]/90">{formatBytes(data.buffers_bytes)}</div>
+        </div>
+        <div
+          className="rounded-xl px-3 py-2 flex flex-col justify-center"
+          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)' }}
+        >
+          <CardLabel className="text-[9px] mb-0.5 text-[#a78bfa]/60">Shared</CardLabel>
+          <div className="text-[10px] font-mono text-[#a78bfa]/90">{formatBytes(data.shared_bytes)}</div>
+        </div>
+      </div>
+
       {/* Available */}
       <div
         className="rounded-xl px-4 py-3 flex justify-between items-center"

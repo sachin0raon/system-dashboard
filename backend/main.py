@@ -116,6 +116,8 @@ class MemoryInfo(BaseModel):
     swap_used_bytes: int
     swap_percent: float
     cached_bytes: int = 0
+    buffers_bytes: int = 0
+    shared_bytes: int = 0
 
 
 class DiskPartition(BaseModel):
@@ -260,6 +262,8 @@ def _get_memory() -> MemoryInfo:
         swap_used_bytes=sw.used,
         swap_percent=sw.percent,
         cached_bytes=getattr(vm, 'cached', 0),
+        buffers_bytes=getattr(vm, 'buffers', 0),
+        shared_bytes=getattr(vm, 'shared', 0),
     )
 
 

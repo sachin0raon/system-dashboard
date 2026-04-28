@@ -19,6 +19,8 @@ export interface MemoryInfo {
   swap_used_bytes: number;
   swap_percent: number;
   cached_bytes: number;
+  buffers_bytes: number;
+  shared_bytes: number;
 }
 
 export interface DiskPartition {
