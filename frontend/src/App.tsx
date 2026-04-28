@@ -121,7 +121,7 @@ function App() {
               /* Row 2 — four equal quarters */
               { id: 'disk',   node: <DiskCard data={data.disk} />,                                                                         className: 'lg:col-span-3' },
               { id: 'net',    node: <NetworkCard data={data.network} />,                                                                   className: 'lg:col-span-3' },
-              { id: 'temp',   node: <TemperatureCard data={data.temperature} />,                                                           className: 'lg:col-span-3' },
+              { id: 'temp',   node: <TemperatureCard data={data.temperature} cpu={data.cpu} />,                                           className: 'lg:col-span-3' },
               { id: 'health', node: <SystemHealthCard temperature={data.temperature} os={data.os} />,                                      className: 'lg:col-span-3' },
               /* Row 3 — process table gets full width for comfortable columns */
               { id: 'procs',  node: <TopProcessesCard cpuData={data.processes_cpu} memData={data.processes_memory} />,                     className: 'md:col-span-2 lg:col-span-12' },

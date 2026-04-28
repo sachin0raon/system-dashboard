@@ -6,6 +6,8 @@ export interface CpuInfo {
   frequency_mhz: number;
   core_count: number;
   thread_count: number;
+  ctx_switches_per_sec: number;
+  interrupts_per_sec: number;
 }
 
 export interface MemoryInfo {

@@ -103,6 +103,8 @@ class CpuInfo(BaseModel):
     frequency_mhz: float
     core_count: int
     thread_count: int
+    ctx_switches_per_sec: float = 0.0
+    interrupts_per_sec: float = 0.0
 
 
 class MemoryInfo(BaseModel):
@@ -207,6 +209,8 @@ _prev_disk_io: Optional[psutil._common.sdiskio] = None   # type: ignore[name-def
 _prev_disk_time: float = 0.0
 _prev_net_io: Optional[Dict[str, psutil._common.snetio]] = None  # type: ignore[name-defined]
 _prev_net_time: float = 0.0
+_prev_cpu_stats: Optional[psutil._common.scpustats] = None  # type: ignore[name-defined]
+_prev_cpu_stats_time: float = 0.0
 _process_cache: Dict[int, psutil.Process] = {}
 
 
@@ -214,14 +218,30 @@ _process_cache: Dict[int, psutil.Process] = {}
 
 def _get_cpu() -> CpuInfo:
     freq = psutil.cpu_freq()
-    # Using interval=None avoids blocking the FastAPI event loop for 100ms.
-    # It returns usage since the last call to cpu_percent in this process.
+    
+    global _prev_cpu_stats, _prev_cpu_stats_time
+    now = time.monotonic()
+    ctx_sw_bps = int_bps = 0.0
+    try:
+        cur_stats = psutil.cpu_stats()
+        if _prev_cpu_stats is not None:
+            dt = now - _prev_cpu_stats_time
+            if dt > 0:
+                ctx_sw_bps = (cur_stats.ctx_switches - _prev_cpu_stats.ctx_switches) / dt
+                int_bps = (cur_stats.interrupts - _prev_cpu_stats.interrupts) / dt
+        _prev_cpu_stats = cur_stats
+        _prev_cpu_stats_time = now
+    except Exception:
+        pass
+
     return CpuInfo(
         usage_percent=psutil.cpu_percent(interval=None),
         per_core_percent=psutil.cpu_percent(interval=None, percpu=True),  # type: ignore[arg-type]
         frequency_mhz=freq.current if freq else 0.0,
         core_count=psutil.cpu_count(logical=False) or 1,
         thread_count=psutil.cpu_count(logical=True) or 1,
+        ctx_switches_per_sec=max(ctx_sw_bps, 0),
+        interrupts_per_sec=max(int_bps, 0),
     )
 
 

@@ -1,25 +1,28 @@
-import { Thermometer, Fan } from 'lucide-react';
+import { Thermometer, Fan, Zap, Cpu } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { GlassCard } from '../ui/GlassCard';
 import { StatValue, CardLabel } from '../ui/StatValue';
-import { getStatusColor, statusToColor, statusToGlow } from '../../lib/utils';
-import type { TemperatureInfo } from '../../types/metrics';
+import { getStatusColor, statusToColor, statusToGlow, formatNumber } from '../../lib/utils';
+import type { TemperatureInfo, CpuInfo } from '../../types/metrics';
 
 interface TempGaugeProps {
   label: string;
   value: number | null;
+  max?: number;
+  unit?: string;
+  colorScale?: { warn: number; danger: number };
 }
 
-function TempGauge({ label, value }: TempGaugeProps) {
-  const temp = value ?? 0;
-  const status = getStatusColor(temp, { warn: 65, danger: 80 });
+function GenericGauge({ label, value, max = 100, unit = '°', colorScale = { warn: 65, danger: 80 } }: TempGaugeProps) {
+  const val = value ?? 0;
+  const status = getStatusColor(val, colorScale);
   const color = statusToColor(status);
   const glow = statusToGlow(status);
 
   // Gauge arc (semicircle) - SVG based
   const radius = 40;
   const circumference = Math.PI * radius; // half-circle circumference
-  const progress = Math.min(100, Math.max(0, ((temp - 20) / 80) * 100)); // 20°C = 0%, 100°C = 100%
+  const progress = Math.min(100, Math.max(0, (val / max) * 100));
   const dashOffset = circumference - (progress / 100) * circumference;
 
   return (
@@ -53,11 +56,11 @@ function TempGauge({ label, value }: TempGaugeProps) {
             y="46"
             textAnchor="middle"
             fill={color}
-            fontSize="14"
+            fontSize="12"
             fontFamily="JetBrains Mono, monospace"
             fontWeight="700"
           >
-            {value !== null ? `${temp.toFixed(0)}°` : 'N/A'}
+            {value !== null ? `${formatNumber(val)}${unit}` : 'N/A'}
           </text>
         </svg>
       </div>
@@ -68,9 +71,69 @@ function TempGauge({ label, value }: TempGaugeProps) {
 
 interface TemperatureCardProps {
   data: TemperatureInfo;
+  cpu?: CpuInfo;
 }
 
-export function TemperatureCard({ data }: TemperatureCardProps) {
+export function TemperatureCard({ data, cpu }: TemperatureCardProps) {
+  const hasThermalData = (data.cpu_celsius !== null && data.cpu_celsius > 0) || (Object.keys(data.sensors || {}).length > 0);
+
+  if (!hasThermalData && cpu) {
+    return (
+      <GlassCard className="p-6 space-y-5">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: 'rgba(56, 189, 248, 0.12)' }}
+            >
+              <Zap
+                className="w-5 h-5 text-sky-400"
+                style={{ filter: 'drop-shadow(0 0 6px rgba(56, 189, 248, 0.4))' }}
+              />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-white">Kernel Stats</h2>
+              <CardLabel>CPU & System Activity</CardLabel>
+            </div>
+          </div>
+          <div className="bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded text-[10px] text-sky-400 font-bold uppercase tracking-wider">
+            VM Mode
+          </div>
+        </div>
+
+        <div className="flex justify-around pt-2">
+          <GenericGauge 
+            label="Context Sw/s" 
+            value={cpu.ctx_switches_per_sec} 
+            max={50000} 
+            unit="" 
+            colorScale={{ warn: 20000, danger: 40000 }}
+          />
+          <GenericGauge 
+            label="Interrupts/s" 
+            value={cpu.interrupts_per_sec} 
+            max={20000} 
+            unit="" 
+            colorScale={{ warn: 8000, danger: 15000 }}
+          />
+        </div>
+
+        <div className="space-y-2 pt-1">
+          <div
+            className="rounded-xl px-4 py-3 flex justify-between items-center"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}
+          >
+            <CardLabel>System Calls</CardLabel>
+            <div className="flex items-baseline gap-1">
+               <span className="text-lg font-mono font-bold text-sky-400">Low</span>
+               <span className="text-[10px] text-muted">lat</span>
+            </div>
+          </div>
+        </div>
+      </GlassCard>
+    );
+  }
+
   const allSensors = Object.entries(data.sensors ?? {});
 
   return (
@@ -87,7 +150,7 @@ export function TemperatureCard({ data }: TemperatureCardProps) {
             />
           </div>
           <div>
-            <h2 className="text-sm font-semibold">Temperature</h2>
+            <h2 className="text-sm font-semibold text-white">Temperature</h2>
             <CardLabel>Thermal Sensors</CardLabel>
           </div>
         </div>
@@ -110,10 +173,9 @@ export function TemperatureCard({ data }: TemperatureCardProps) {
 
       {/* Gauges */}
       <div className="flex justify-around pt-2">
-        <TempGauge label="CPU" value={data.cpu_celsius} />
-        <TempGauge label="GPU" value={data.gpu_celsius} />
+        <GenericGauge label="CPU" value={data.cpu_celsius} />
+        <GenericGauge label="GPU" value={data.gpu_celsius} />
       </div>
-
 
       {/* Extra sensor rows */}
       {allSensors.length > 0 && (

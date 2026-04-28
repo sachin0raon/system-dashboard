@@ -48,3 +48,9 @@ export function formatBytes(bytes: number, decimals = 1): string {
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
+/** Format a number into a human-readable string (e.g. 1.2k) */
+export function formatNumber(num: number): string {
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'm';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+  return num.toFixed(0);
+}
