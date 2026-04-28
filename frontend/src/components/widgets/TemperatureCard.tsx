@@ -1,4 +1,4 @@
-import { Thermometer, Fan, Zap, Cpu } from 'lucide-react';
+import { Thermometer, Fan, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { GlassCard } from '../ui/GlassCard';
 import { StatValue, CardLabel } from '../ui/StatValue';

@@ -2,14 +2,14 @@ import { Activity, ChevronDown, ChevronUp, ChevronsUpDown, GitBranch } from 'luc
 import { GlassCard } from '../ui/GlassCard';
 import { CardLabel } from '../ui/StatValue';
 import type { ProcessInfo } from '../../types/metrics';
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 
 interface TopProcessesCardProps {
   cpuData: ProcessInfo[];
   memData: ProcessInfo[];
 }
 
-type SortSource = 'cpu' | 'memory';
+
 type SortCol = 'pid' | 'name' | 'cpu' | 'mem' | 'threads' | 'uptime' | 'cmd';
 type SortDir = 'asc' | 'desc';
 
