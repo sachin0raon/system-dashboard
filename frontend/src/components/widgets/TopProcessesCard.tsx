@@ -120,7 +120,7 @@ export function TopProcessesCard({ cpuData, memData }: TopProcessesCardProps) {
       </div>
 
       {/* ── Table ──────────────────────────────────────────────── */}
-      <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[rgba(0,0,0,0.2)] backdrop-blur-md">
+      <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[rgba(0,0,0,0.2)] backdrop-blur-md [overflow-anchor:none]">
         <table className="w-full text-xs text-left border-collapse">
           <thead>
             <tr className="bg-white/5 border-b border-[var(--color-border)]">

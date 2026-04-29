@@ -93,49 +93,43 @@ function App() {
         {/* ── Dashboard Grid ──────────────────────────────────── */}
         {isLoading && !data ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
-            {[
-              /* Row 1 — equal thirds */
-              'lg:col-span-4',
-              'lg:col-span-4',
-              'lg:col-span-4',
-              /* Row 2 — four equal quarters */
-              'lg:col-span-3',
-              'lg:col-span-3',
-              'lg:col-span-3',
-              'lg:col-span-3',
-              /* Row 3 — full-width process table */
-              'lg:col-span-12',
-            ].map((className, i) => (
-              <div key={i} className={`${className} h-full`}>
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className={i < 3 ? 'lg:col-span-4' : i < 7 ? 'lg:col-span-3' : 'lg:col-span-12'}>
                 <SkeletonCard />
               </div>
             ))}
           </div>
         ) : data ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
-            {[
-              /* Row 1 — three equal stat cards */
-              { id: 'cpu',    node: <CpuCard data={data.cpu} />,                                                                           className: 'lg:col-span-4' },
-              { id: 'mem',    node: <MemoryCard data={data.memory} />,                                                                     className: 'lg:col-span-4' },
-              { id: 'os',     node: <OsCard data={data.os} />,                                                                             className: 'lg:col-span-4' },
-              /* Row 2 — four equal quarters */
-              { id: 'disk',   node: <DiskCard data={data.disk} />,                                                                         className: 'lg:col-span-3' },
-              { id: 'net',    node: <NetworkCard data={data.network} />,                                                                   className: 'lg:col-span-3' },
-              { id: 'temp',   node: <TemperatureCard data={data.temperature} cpu={data.cpu} />,                                           className: 'lg:col-span-3' },
-              { id: 'health', node: <SystemHealthCard temperature={data.temperature} os={data.os} />,                                      className: 'lg:col-span-3' },
-              /* Row 3 — process table gets full width for comfortable columns */
-              { id: 'procs',  node: <TopProcessesCard cpuData={data.processes_cpu} memData={data.processes_memory} />,                     className: 'md:col-span-2 lg:col-span-12' },
-            ].map((item, i) => (
-              <motion.div
-                key={item.id}
-                className={`${item.className} h-full`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={cardTransition(i)}
-              >
-                {item.node}
-              </motion.div>
-            ))}
+            {/* Row 1 — three equal stat cards */}
+            <motion.div className="lg:col-span-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={cardTransition(0)}>
+              <CpuCard data={data.cpu} />
+            </motion.div>
+            <motion.div className="lg:col-span-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={cardTransition(1)}>
+              <MemoryCard data={data.memory} />
+            </motion.div>
+            <motion.div className="lg:col-span-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={cardTransition(2)}>
+              <OsCard data={data.os} />
+            </motion.div>
+
+            {/* Row 2 — four equal quarters */}
+            <motion.div className="lg:col-span-3" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={cardTransition(3)}>
+              <DiskCard data={data.disk} />
+            </motion.div>
+            <motion.div className="lg:col-span-3" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={cardTransition(4)}>
+              <NetworkCard data={data.network} />
+            </motion.div>
+            <motion.div className="lg:col-span-3" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={cardTransition(5)}>
+              <TemperatureCard data={data.temperature} cpu={data.cpu} />
+            </motion.div>
+            <motion.div className="lg:col-span-3" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={cardTransition(6)}>
+              <SystemHealthCard temperature={data.temperature} os={data.os} />
+            </motion.div>
+
+            {/* Row 3 — process table gets full width */}
+            <motion.div className="md:col-span-2 lg:col-span-12" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={cardTransition(7)}>
+              <TopProcessesCard cpuData={data.processes_cpu} memData={data.processes_memory} />
+            </motion.div>
           </div>
         ) : null}
       </div>

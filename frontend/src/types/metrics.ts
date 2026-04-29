@@ -86,6 +86,7 @@ export interface OsInfo {
   load_avg_5: number;
   load_avg_15: number;
   process_count: number;
+  cpu_model: string;
 }
 
 export interface ProcessInfo {

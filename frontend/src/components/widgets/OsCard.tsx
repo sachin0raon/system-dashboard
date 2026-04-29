@@ -79,7 +79,7 @@ export function OsCard({ data }: OsCardProps) {
           { label: 'OS Name', value: data.os_name },
           { label: 'OS Version', value: data.os_version },
           { label: 'Kernel', value: data.kernel },
-          { label: 'Processes', value: data.process_count.toString() },
+          { label: 'CPU Model', value: data.cpu_model },
         ].map(({ label, value }) => (
           <div key={label} className="flex flex-col">
             <span className="text-secondary font-medium tracking-wide uppercase text-[9px] mb-0.5">{label}</span>

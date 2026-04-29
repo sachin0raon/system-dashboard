@@ -184,12 +184,13 @@ export function TemperatureCard({ data, cpu }: TemperatureCardProps) {
               return (
                 <div
                   key={key}
-                  className="rounded-xl px-3 py-2 flex items-center justify-between"
+                  className="rounded-xl px-4 py-3 flex flex-col gap-1"
                   style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}
                 >
-                  <span className="text-xs text-secondary truncate max-w-[60%]">{key}</span>
+                  <span className="text-[10px] text-secondary truncate uppercase tracking-widest font-medium">{key}</span>
                   <StatValue
-                    value={`${val.toFixed(0)}°C`}
+                    value={`${val.toFixed(1)}`}
+                    unit="°C"
                     size="sm"
                     color={statusToColor(status)}
                   />

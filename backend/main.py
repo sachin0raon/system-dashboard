@@ -183,6 +183,8 @@ class OsInfo(BaseModel):
     load_avg_5: float
     load_avg_15: float
     process_count: int
+    cpu_model: str
+
 
 
 class ProcessInfo(BaseModel):
@@ -506,7 +508,43 @@ def _get_os() -> OsInfo:
         load_avg_5=load[1],
         load_avg_15=load[2],
         process_count=len(psutil.pids()),
+        cpu_model=_get_cpu_model(),
     )
+
+
+def _get_cpu_model() -> str:
+    """Returns CPU model by parsing lscpu output."""
+    import subprocess
+    vendor = ""
+    model = ""
+    try:
+        # Run lscpu command
+        output = subprocess.check_output(["lscpu"], text=True, stderr=subprocess.DEVNULL)
+        for line in output.splitlines():
+            if line.startswith("Vendor ID:"):
+                vendor = line.split(":", 1)[1].strip()
+            elif line.startswith("Model name:"):
+                model = line.split(":", 1)[1].strip()
+        
+        if vendor and model:
+            return f"{vendor} {model}"
+        elif model:
+            return model
+        elif vendor:
+            return vendor
+    except Exception:
+        pass
+
+    # Fallback to platform.processor() or uname.machine
+    import platform
+    try:
+        brand = platform.processor()
+        if brand:
+            return brand
+    except Exception:
+        pass
+        
+    return platform.machine()
 
 
 def _get_processes(limit: int = 10) -> Dict[str, List[ProcessInfo]]:
