@@ -286,7 +286,7 @@ def _get_disk() -> DiskInfo:
                     free_bytes=usage.free,
                     percent=usage.percent,
                     inodes_percent=getattr(usage, 'inodes_percent', 0.0),
-                    inodes_total=getattr(usage, 'inodes', 0),
+                    inodes_total=getattr(usage, 'inodes_total', 0),
                     inodes_used=getattr(usage, 'inodes_used', 0),
                     inodes_free=getattr(usage, 'inodes_free', 0),
                 )
