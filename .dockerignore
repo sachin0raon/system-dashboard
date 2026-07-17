@@ -1,32 +1,51 @@
 # Version control
 .git
 .gitignore
+.dockerignore
 
 # Documentation
 README.md
+GO_MIGRATION_PLAN.md
+dashboard.png
 
-# Application development files
-**/node_modules
-**/dist
-**/__pycache__
-**/*.pyc
+# OS / IDE
+.DS_Store
+._*
+.vscode/
+.idea/
+
+# Env files (never bake secrets into image)
+**/.env
+**/.env.*
+
+# Python backend (not used in Docker build)
+backend/
+**/__pycache__/
+**/*.py[cod]
 **/*.pyo
 **/*.pyd
-**/.venv
-**/venv
-**/.env
-**/.env.local
+**/.venv/
+**/venv/
 
-# OS files
-.DS_Store
-
-# IDE files
-.vscode
-.idea
-
-# Build artifacts
-frontend/dist
-backend/.venv
-coverage
-.nyc_output
+# Node / frontend build artifacts
+**/node_modules/
+frontend/dist/
+.npm
 .eslintcache
+.nyc_output/
+coverage/
+
+# Go build artifacts
+backend-go/bin/
+backend-go/tmp/
+*.exe
+*.out
+vendor/
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+*.pid
+*.seed

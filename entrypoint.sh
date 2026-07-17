@@ -1,19 +1,19 @@
 #!/bin/sh
-# entrypoint.sh — Start FastAPI backend then Nginx in foreground
+# entrypoint.sh — Start Go backend then Nginx in foreground
 
 set -e
 
 echo "Starting Pi Dashboard..."
-echo "Backend: uvicorn on 127.0.0.1:8000"
+echo "Backend: Go binary on 127.0.0.1:8000"
 echo "Frontend: nginx on :80"
 
-# Start FastAPI backend in background
-uvicorn main:app --host 127.0.0.1 --port 8000 --workers 1 --no-access-log &
-UVICORN_PID=$!
+# Start Go backend in background
+/usr/local/bin/dashboard &
+BACKEND_PID=$!
 
-# Wait for backend to be ready
+# Wait for backend to be ready (Go starts in ~20ms, but give it 5s to be safe)
 echo "Waiting for backend to start..."
-for i in $(seq 1 15); do
+for i in $(seq 1 5); do
     if wget -q -O /dev/null http://127.0.0.1:8000/api/health 2>/dev/null; then
         echo "Backend is ready."
         break
