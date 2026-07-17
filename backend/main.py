@@ -276,6 +276,15 @@ def _get_disk() -> DiskInfo:
     for p in psutil.disk_partitions(all=False):
         try:
             usage = psutil.disk_usage(p.mountpoint)
+            try:
+                st = os.statvfs(p.mountpoint)
+                inodes_total = st.f_files
+                inodes_free = st.f_ffree
+                inodes_used = inodes_total - inodes_free
+                inodes_percent = (inodes_used / inodes_total * 100) if inodes_total > 0 else 0.0
+            except (AttributeError, OSError):
+                inodes_total = inodes_free = inodes_used = 0
+                inodes_percent = 0.0
             partitions.append(
                 DiskPartition(
                     device=p.device,
@@ -285,10 +294,10 @@ def _get_disk() -> DiskInfo:
                     used_bytes=usage.used,
                     free_bytes=usage.free,
                     percent=usage.percent,
-                    inodes_percent=getattr(usage, 'inodes_percent', 0.0),
-                    inodes_total=getattr(usage, 'inodes_total', 0),
-                    inodes_used=getattr(usage, 'inodes_used', 0),
-                    inodes_free=getattr(usage, 'inodes_free', 0),
+                    inodes_percent=inodes_percent,
+                    inodes_total=inodes_total,
+                    inodes_used=inodes_used,
+                    inodes_free=inodes_free,
                 )
             )
         except (PermissionError, OSError):

@@ -65,10 +65,10 @@ export function DiskCard({ data }: DiskCardProps) {
       {/* Partitions */}
       <div className="space-y-4">
         <div className="space-y-2">
-          <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2 pr-2">
+          <div className="flex justify-between items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <span className="text-sm font-medium truncate">{currentPartition.mountpoint}</span>
-            <span className="px-1.5 py-0.5 rounded-md bg-cyan-500/10 text-[9px] font-mono text-cyan-400 border border-cyan-500/20 uppercase">
+            <span className="px-1.5 py-0.5 rounded-md bg-cyan-500/10 text-[9px] font-mono text-cyan-400 border border-cyan-500/20 uppercase shrink-0">
               {currentPartition.fstype}
             </span>
           </div>
@@ -77,6 +77,7 @@ export function DiskCard({ data }: DiskCardProps) {
               unit="%"
               size="sm"
               color="#eab308"
+              className="shrink-0"
             />
           </div>
           <MetricBar
