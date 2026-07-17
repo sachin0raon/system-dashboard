@@ -42,8 +42,8 @@ backend-go/tmp/
 *.out
 vendor/
 
-# Logs
-logs/
+# Logs (only top-level log dirs/files, not Go source packages)
+backend-go/logs/*.log
 *.log
 
 # Runtime data
