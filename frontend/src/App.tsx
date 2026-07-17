@@ -9,6 +9,7 @@ import { NetworkCard } from './components/widgets/NetworkCard';
 import { OsCard } from './components/widgets/OsCard';
 import { TopProcessesCard } from './components/widgets/TopProcessesCard';
 import { SystemHealthCard } from './components/widgets/SystemHealthCard';
+import { LogCard } from './components/widgets/LogCard';
 import { SkeletonCard } from './components/LoadingStates';
 
 const cardTransition = (i: number): Transition => ({
@@ -129,6 +130,11 @@ function App() {
             {/* Row 3 — process table gets full width */}
             <motion.div className="md:col-span-2 lg:col-span-12" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={cardTransition(7)}>
               <TopProcessesCard cpuData={data.processes_cpu} memData={data.processes_memory} />
+            </motion.div>
+
+            {/* Row 4 — log viewer */}
+            <motion.div className="md:col-span-2 lg:col-span-12" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={cardTransition(8)}>
+              <LogCard />
             </motion.div>
           </div>
         ) : null}
