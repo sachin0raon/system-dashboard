@@ -21,7 +21,7 @@ FROM python:3.12-slim AS runtime
 
 # Install Nginx
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends nginx wget \
+    && apt-get install -y --no-install-recommends nginx wget systemd \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

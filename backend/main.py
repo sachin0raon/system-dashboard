@@ -8,7 +8,9 @@ All endpoints are protected by an X-API-Key header.
 from __future__ import annotations
 
 import asyncio
+import json
 import os
+import subprocess
 import time
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Set
@@ -209,6 +211,15 @@ class SystemMetrics(BaseModel):
     processes_cpu: List[ProcessInfo]
     processes_memory: List[ProcessInfo]
     timestamp: str
+
+
+class LogEntry(BaseModel):
+    timestamp: str
+    unit: Optional[str] = None
+    message: str
+    priority: int = 6
+    hostname: Optional[str] = None
+    pid: Optional[int] = None
 
 
 # ─── State for delta calculations ─────────────────────────────────────────────
@@ -717,6 +728,71 @@ async def broadcast_metrics_loop():
 async def startup_event():
     # Start the broadcast loop entirely in the background
     asyncio.create_task(broadcast_metrics_loop())
+
+
+@app.get("/api/logs", dependencies=[Security(verify_api_key)])
+async def get_logs(
+    unit: Optional[str] = Query(None, description="Filter by systemd unit (e.g. ssh.service)"),
+    lines: int = Query(100, ge=1, le=1000),
+    priority: Optional[int] = Query(None, ge=0, le=7, description="Max priority (0=emerg … 7=debug)"),
+) -> dict:
+    cmd = ["journalctl", "--no-pager", "-o", "json", f"-n{lines}"]
+    if unit:
+        cmd += ["-u", unit]
+    if priority is not None:
+        cmd += [f"-p{priority}"]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        entries: List[LogEntry] = []
+        for line in result.stdout.splitlines():
+            try:
+                raw = json.loads(line)
+                ts_usec = int(raw.get("__REALTIME_TIMESTAMP", 0))
+                ts = datetime.fromtimestamp(ts_usec / 1_000_000, tz=timezone.utc).isoformat()
+                pid_raw = raw.get("_PID")
+                entries.append(LogEntry(
+                    timestamp=ts,
+                    unit=raw.get("_SYSTEMD_UNIT") or raw.get("SYSLOG_IDENTIFIER"),
+                    message=raw.get("MESSAGE", ""),
+                    priority=int(raw.get("PRIORITY", 6)),
+                    hostname=raw.get("_HOSTNAME"),
+                    pid=int(pid_raw) if pid_raw else None,
+                ))
+            except (json.JSONDecodeError, ValueError):
+                continue
+        return {"entries": [e.model_dump() for e in entries], "count": len(entries)}
+    except FileNotFoundError:
+        raise HTTPException(status_code=503, detail="journalctl not available in container")
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="journalctl timed out")
+
+
+@app.get("/api/services", dependencies=[Security(verify_api_key)])
+async def get_running_services() -> dict:
+    services: set[str] = set()
+    # cgroup v2 unified hierarchy (Debian Bookworm / Pi OS Bookworm)
+    for cg_slice in ("/sys/fs/cgroup/system.slice", "/sys/fs/cgroup/systemd/system.slice"):
+        if os.path.isdir(cg_slice):
+            with os.scandir(cg_slice) as it:
+                for entry in it:
+                    if entry.name.endswith(".service") and entry.is_dir():
+                        services.add(entry.name)
+    return {"services": sorted(services)}
+
+
+@app.get("/api/logs/units", dependencies=[Security(verify_api_key)])
+async def get_log_units() -> dict:
+    try:
+        result = subprocess.run(
+            ["journalctl", "--field=_SYSTEMD_UNIT", "--no-pager"],
+            capture_output=True, text=True, timeout=5,
+        )
+        units = sorted({line.strip() for line in result.stdout.splitlines() if line.strip()})
+        return {"units": units}
+    except FileNotFoundError:
+        raise HTTPException(status_code=503, detail="journalctl not available in container")
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="journalctl timed out")
 
 
 @app.get("/api/health", summary="Health check (no auth required)")

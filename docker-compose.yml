@@ -30,6 +30,10 @@ services:
       # Mount /sys and /proc for accurate sensor + metric readings
       - /proc:/proc:ro
       - /sys:/sys:ro
+      # Mount host journal for journalctl log access
+      - /run/log/journal:/run/log/journal:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost/api/health"]
       interval: 30s
