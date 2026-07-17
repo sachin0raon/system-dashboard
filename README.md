@@ -4,59 +4,66 @@ A beautiful, modern, glassmorphic system monitoring dashboard for Linux systems 
 
 ![Dashboard](dashboard.png)
 
-**Stack:** React 19 + TypeScript + Tailwind CSS 4 + Framer Motion (frontend) · FastAPI + WebSockets + psutil (backend) · Nginx (reverse proxy) · Docker (single container)
+**Stack:** React 19 + TypeScript + Tailwind CSS 4 + Framer Motion (frontend) · Go + chi + WebSockets + gopsutil (backend) · Nginx (reverse proxy) · Docker (single container)
 
 ---
 
-## ✨ Key Features
+## ✨ Features
 
-- **💎 Premium Glassmorphism UI**: High-fidelity design with real-time blur, glow effects, and a **symmetrical 12-column grid** layout.
-- **🚀 Real-Time Telemetry**: Instant system updates via persistent **WebSockets**, using a background broadcast manager for zero-latency data streaming.
-- **📊 Pro Task Manager**: Enhanced 7-column sortable table tracking `PID`, `PPid`, `Threads`, `Uptime`, and `Command` (with tooltips).
-- **🛡️ System Health & Thermal**: Dedicated health tracking for Pi hardware flags (Under-voltage, Throttling) and **spinning PWM Fan speed** monitoring.
-- **🕒 Precision Header**: State-of-the-art real-time clock with vertical rolling digits and data "heartbeat" animations.
-- **📱 Responsive Symmetry**: Perfectly balanced grid that snaps from a dense desktop view to an optimized mobile layout.
+- **💎 Glassmorphism UI** — Real-time blur, glow effects, and a symmetrical 12-column grid layout.
+- **🚀 Real-Time Telemetry** — Persistent WebSocket stream with a broadcast loop; zero per-request recomputation.
+- **📋 Journald Log Viewer** — Browse and filter systemd journal logs by unit, with live tail support.
+- **📊 Process Manager** — Sortable 7-column table: PID, PPID, User, CPU%, Mem%, Threads, Uptime, Command.
+- **🛡️ System Health** — Raspberry Pi hardware flags (under-voltage, throttling, freq-capping), PWM fan RPM.
+- **🕒 Precision Clock** — Rolling-digit real-time clock with WebSocket heartbeat indicator.
+- **📱 Responsive** — Dense desktop grid that snaps to an optimized mobile layout.
 
 ---
 
 ## Quick Start (Docker — Recommended)
 
-### 1. Create backend `.env`
+### 1. Create `.env`
 
 ```bash
 cp backend/.env.example backend/.env
-# Edit backend/.env and set a strong API_KEY
+# Set a strong API_KEY
 nano backend/.env
+```
+
+`.env` format:
+```
+API_KEY=your-secret-key
+ALLOWED_ORIGINS=*
 ```
 
 ### 2. Build and run
 
 ```bash
-# Build and start (API_KEY is passed as a build arg for the frontend bundle)
 API_KEY=$(grep API_KEY backend/.env | cut -d= -f2) docker compose up -d --build
 ```
 
-### Option B: Docker CLI (Alternative)
-
-If you prefer using standard Docker commands:
+### Alternative: Docker CLI
 
 ```bash
-# 1. Build
-docker build --build-arg VITE_API_KEY=your-secret-key -t pi5-dashboard:latest .
+# Build
+docker build --build-arg VITE_API_KEY=your-secret-key -t sys-dash:latest .
 
-# 2. Run
+# Run
 docker run -d \
-  --name pi5-dashboard \
+  --name sys-dash \
   --restart unless-stopped \
   -p 80:80 \
   --env-file backend/.env \
   --pid host \
   -v /proc:/proc:ro \
   -v /sys:/sys:ro \
-  pi5-dashboard:latest
+  -v /run/log/journal:/run/log/journal:ro \
+  -v /var/log/journal:/var/log/journal:ro \
+  -v /etc/machine-id:/etc/machine-id:ro \
+  sys-dash:latest
 ```
 
-*(Note: Mapping `/dev/vchiq` is only applicable to Raspberry Pi hardware and may fail on other Linux distributions if the driver is not loaded.)*
+> The journal volume mounts are only required for the Log Viewer feature. The `/proc` and `/sys` mounts are needed for accurate sensor and metric readings.
 
 ### 3. Access
 
@@ -64,122 +71,55 @@ Open `http://<your-ip>` in a browser.
 
 ---
 
+## Local Development
+
+### Backend (Go)
+
+```bash
+cd backend-go
+cp ../.env.example .env  # or create manually with API_KEY=...
+go run .
+# Listening on 127.0.0.1:8000
+```
+
+### Frontend (Vite + React)
+
+```bash
+cd frontend
+# Create .env.local with VITE_API_KEY matching the backend
+echo "VITE_API_KEY=your-secret-key" > .env.local
+npm install
+npm run dev
+# Open http://localhost:5173 — Vite proxies /api and /ws to :8000
+```
+
+---
+
 ## Security
 
 | Layer | Mechanism |
 |---|---|
-| **Authentication** | `X-API-Key` header (REST) or `token` query param (WebSockets) |
-| **Protocol** | Bi-directional WebSockets with automatic exponential backoff reconnection |
-| **Rate limiting** | Nginx: 30 req/min per IP on `/api`, limited simultaneous WS connections |
-| **Security headers** | `X-Frame-Options`, `X-Content-Type-Options`, `CSP`, etc. |
-| **No info leakage** | Nginx version hidden, Swagger UI disabled |
-| **CORS** | Configurable via `ALLOWED_ORIGINS` env var |
+| **Authentication** | `X-API-Key` header (REST) · `?token=` query param (WebSocket) |
+| **Transport** | Bi-directional WebSocket with automatic exponential backoff reconnection |
+| **Rate limiting** | Nginx: 30 req/min per IP on `/api`, burst of 10 |
+| **Security headers** | `X-Frame-Options`, `X-Content-Type-Options`, `CSP`, `Referrer-Policy` |
+| **No info leakage** | Nginx `server_tokens off`, upstream `Server` header stripped |
+| **CORS** | Configurable via `ALLOWED_ORIGINS` env var (defaults to `*`) |
 
-> ⚠️ For public internet exposure, put this behind a reverse proxy (Cloudflare / Caddy / Nginx) with **HTTPS (TLS)**.
-
----
-
-## Local Development (without Docker)
-
-### Backend
-
-```bash
-cd backend
-cp .env.example .env  # Set API_KEY
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
-```
-
-### Frontend
-
-```bash
-cd frontend
-# .env.local already created — edit VITE_API_KEY to match backend
-npm run dev
-```
-
-Open `http://localhost:5173`. Vite proxies `/api` → `http://localhost:8000`.
+> For public internet exposure, place this behind a TLS-terminating reverse proxy (Cloudflare / Caddy / Nginx).
 
 ---
 
-## Option C: Hybrid (systemd Backend + Docker Frontend)
+## API Endpoints
 
-The best of both worlds: **Native Backend** for direct hardware sensor access and **Docker Frontend** for clean environment isolation.
-
-### 1. Backend: systemd Service
-Create `/etc/systemd/system/rpi-dash-backend.service`:
-```ini
-[Unit]
-Description=Raspberry Pi Dashboard Backend
-After=network.target
-
-[Service]
-User=your_user
-WorkingDirectory=/path/to/rpi-dash/backend
-# Listen on 0.0.0.0 so the container can reach the host
-ExecStart=/path/to/rpi-dash/backend/.venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
-Restart=always
-Environment=API_KEY=your_secret_key
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable rpi-dash-backend
-sudo systemctl start rpi-dash-backend
-```
-
-### 2. Frontend: Docker Container
-Run this from the project root. The `--add-host` flag allows the container to talk to the host machine via `host.docker.internal`.
-
-```bash
-# Build
-docker build -f Dockerfile.frontend \
-  --build-arg VITE_API_KEY=your_secret_key \
-  -t rpi-dash-frontend:latest .
-
-# Run
-docker run -d \
-  --name rpi-dash-ui \
-  -p 80:80 \
-  --add-host=host.docker.internal:host-gateway \
-  --restart unless-stopped \
-  rpi-dash-frontend:latest
-```
-
----
-
-## Project Structure
-
-```
-system-dash/
-├── frontend/                    # React 19 + Vite + Tailwind CSS 4
-│   ├── src/
-│   │   ├── api/socket.ts        # Custom WebSocket hook (useSystemSocket) with auto-reconnect logic
-│   │   ├── components/
-│   │   │   ├── ui/              # GlassCard, MetricBar, StatValue
-│   │   │   ├── widgets/         # CpuCard, MemoryCard, DiskCard, TemperatureCard, NetworkCard, OsCard, TopProcessesCard, SystemHealthCard
-│   │   │   ├── Header.tsx       # Dynamic clock + connectivity
-│   │   │   ├── RealTimeClock.tsx # Precision animated time component
-│   │   │   └── LoadingStates.tsx
-│   │   ├── lib/utils.ts         # cn, formatBytes, status color helpers
-│   │   ├── types/metrics.ts     # TypeScript types matching FastAPI models
-│   │   ├── App.tsx              # Symmetrical 6-column grid layout
-│   │   └── index.css            # Design tokens + glass utilities
-│   └── .env.local               # VITE_API_KEY for local dev
-├── backend/
-│   ├── main.py                  # FastAPI app with psutil collectors
-│   ├── requirements.txt
-│   └── .env.example             # Copy to .env and set API_KEY
-├── nginx/
-│   └── nginx.conf               # Serves SPA + proxies /api, security headers
-├── Dockerfile                   # Multi-stage: Node build → Python runtime
-├── docker-compose.yml
-├── entrypoint.sh                # Starts uvicorn, waits for health, then nginx
-└── .dockerignore
-```
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/health` | None | Liveness check |
+| `GET` | `/api/metrics` | `X-API-Key` | Latest cached metrics snapshot (JSON) |
+| `GET` | `/api/logs` | `X-API-Key` | Journald log entries (`?unit=`, `?lines=`) |
+| `GET` | `/api/logs/units` | `X-API-Key` | List available systemd units |
+| `GET` | `/api/services` | `X-API-Key` | Running systemd services from cgroup sysfs |
+| `GET` | `/ws/metrics` | `?token=` | WebSocket stream — pushes snapshot every 2 s |
 
 ---
 
@@ -189,9 +129,50 @@ system-dash/
 |---|---|
 | **CPU** | Overall %, per-core %, frequency, core/thread count |
 | **Memory** | RAM used/total/%, swap used/total/% |
-| **Temperature** | CPU °C, GPU °C, **spinning PWM Fan RPM**, °F secondary readings |
-| **Health** | Under-voltage, Throttling, Freq capping, Load Average (1m/5m/15m) |
-| **Disk** | Per-partition usage %, device paths, fstype, read/write bytes/sec |
+| **Temperature** | CPU °C, GPU °C, PWM fan RPM, °F secondary readings |
+| **System Health** | Under-voltage, throttling, freq-capping flags; load average 1m/5m/15m |
+| **Disk** | Per-partition usage %, device paths, fstype, inode usage, read/write bytes/sec |
 | **Network** | Per-interface recv/sent rates + session totals, IP address |
 | **OS Info** | Hostname, platform, kernel, architecture, boot time, uptime |
-| **Processes** | 7-column table: PID, PPID, User, CPU, Mem, Threads, Uptime, Command |
+| **Processes** | PID, PPID, User, CPU%, Mem%, Threads, Uptime, Command |
+| **Logs** | Journald log entries filterable by systemd unit |
+
+---
+
+## Project Structure
+
+```
+sys-dash/
+├── frontend/                    # React 19 + Vite + Tailwind CSS 4
+│   └── src/
+│       ├── api/socket.ts        # useSystemSocket — WebSocket hook with auto-reconnect
+│       ├── components/
+│       │   ├── ui/              # GlassCard, MetricBar, StatValue
+│       │   ├── widgets/         # CpuCard, MemoryCard, DiskCard, TemperatureCard,
+│       │   │                    # NetworkCard, OsCard, TopProcessesCard,
+│       │   │                    # SystemHealthCard, LogCard
+│       │   ├── Header.tsx       # Real-time clock + WebSocket heartbeat
+│       │   └── LoadingStates.tsx
+│       ├── lib/utils.ts         # cn, formatBytes, status colour helpers
+│       ├── types/metrics.ts     # TypeScript types mirroring Go models
+│       └── App.tsx              # 12-column grid layout
+├── backend-go/                  # Go backend (chi router + gopsutil)
+│   ├── main.go                  # Router, middleware, graceful shutdown
+│   ├── metrics/                 # Collectors: cpu, memory, disk, network,
+│   │   │                        # temperature, processes, osinfo, sysfs, state
+│   │   └── models.go            # SystemMetrics struct
+│   ├── ws/                      # WebSocket hub + broadcast loop (2 s interval)
+│   ├── logs/                    # Journald log reader + unit discovery
+│   ├── go.mod
+│   └── go.sum
+├── nginx/
+│   └── nginx.conf               # Serves SPA, proxies /api + /ws, rate limits, security headers
+├── backend/                     # Legacy Python backend (unused in Docker build)
+│   ├── main.py
+│   └── requirements.txt
+├── Dockerfile                   # Multi-stage: Node → Go → debian:bookworm-slim
+├── Dockerfile.frontend          # Frontend-only build (Nginx SPA)
+├── docker-compose.yml
+├── entrypoint.sh                # Starts Go binary, waits for health, then Nginx
+└── .dockerignore
+```
