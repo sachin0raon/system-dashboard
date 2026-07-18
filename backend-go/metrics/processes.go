@@ -50,8 +50,9 @@ func collectProcesses(s *procState) map[string][]ProcessInfo {
 	for _, pid := range pids {
 		p, ok := s.procs[pid]
 		if !ok {
-			p, err = process.NewProcess(pid)
-			if err != nil {
+			var nerr error
+			p, nerr = process.NewProcess(pid)
+			if nerr != nil {
 				continue
 			}
 			s.procs[pid] = p

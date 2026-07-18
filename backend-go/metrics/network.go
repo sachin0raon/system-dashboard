@@ -29,7 +29,12 @@ func collectNetwork(s *netState) NetworkInfo {
 	}
 
 	ifaces := make([]NetworkInterface, 0, len(counters))
-	newPrev := make(map[string]netIOSnapshot, len(counters))
+
+	// Clear and reuse s.prev in-place to avoid a map allocation every tick.
+	// Go's map implementation reuses underlying bucket memory after delete.
+	for k := range s.prev {
+		delete(s.prev, k)
+	}
 
 	for _, c := range counters {
 		prev := s.prev[c.Name]
@@ -42,7 +47,7 @@ func collectNetwork(s *netState) NetworkInfo {
 			recvPPS = max0(float64(c.PacketsRecv-prev.packetsRecv) / dt)
 		}
 
-		newPrev[c.Name] = netIOSnapshot{
+		s.prev[c.Name] = netIOSnapshot{
 			bytesSent:   c.BytesSent,
 			bytesRecv:   c.BytesRecv,
 			packetsSent: c.PacketsSent,
@@ -78,7 +83,6 @@ func collectNetwork(s *netState) NetworkInfo {
 		})
 	}
 
-	s.prev = newPrev
 	s.prevTime = now
 
 	return NetworkInfo{Interfaces: ifaces}

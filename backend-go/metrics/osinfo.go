@@ -53,11 +53,7 @@ func buildOsInfo(s *StaticInfo) OsInfo {
 		avg = &load.AvgStat{}
 	}
 
-	procs, _ := host.Info()
-	procCount := 0
-	if procs != nil {
-		procCount = int(procs.Procs)
-	}
+	procCount := countProcs()
 
 	return OsInfo{
 		Hostname:      s.Hostname,
