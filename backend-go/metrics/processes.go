@@ -22,32 +22,32 @@ func collectProcesses(s *procState) map[string][]ProcessInfo {
 		return map[string][]ProcessInfo{"cpu": {}, "memory": {}}
 	}
 
-	// Remove dead PIDs from cache.
+	// Remove dead PIDs from both caches.
 	alive := make(map[int32]struct{}, len(pids))
 	for _, pid := range pids {
 		alive[pid] = struct{}{}
 	}
-	for pid := range s.cache {
+	for pid := range s.procs {
 		if _, ok := alive[pid]; !ok {
-			delete(s.cache, pid)
+			delete(s.procs, pid)
+			delete(s.cached, pid)
 		}
 	}
 
 	snaps := make([]procSnapshot, 0, len(pids))
 
 	for _, pid := range pids {
-		p, ok := s.cache[pid]
+		p, ok := s.procs[pid]
 		if !ok {
 			var err error
 			p, err = process.NewProcess(pid)
 			if err != nil {
 				continue
 			}
-			s.cache[pid] = p
+			s.procs[pid] = p
 		}
 
-		// CPUPercent() tracks delta internally across calls on the same object.
-		// First call per new process returns 0, which is correct behaviour.
+		// CPUPercent and MemoryPercent are the only fields that change every tick.
 		cpuPct, err := p.CPUPercent()
 		if err != nil {
 			continue
@@ -57,19 +57,35 @@ func collectProcesses(s *procState) map[string][]ProcessInfo {
 			continue
 		}
 
-		name, _ := p.Name()
-		username, _ := p.Username()
-		createTime, _ := p.CreateTime() // epoch milliseconds
-		ppid, _ := p.Ppid()
+		// NumThreads can change; read it every tick (reads /proc/<pid>/status).
 		threads, _ := p.NumThreads()
 
-		cmdline := name
-		if rawCmd, err := p.CmdlineSlice(); err == nil && len(rawCmd) > 0 {
-			full := strings.Join(rawCmd, " ")
-			if len(full) > 120 {
-				full = full[:120]
+		// All other fields are constant for the lifetime of a process.
+		// Fetch once and cache; skip the /proc reads on subsequent ticks.
+		info, cached := s.cached[pid]
+		if !cached {
+			name, _ := p.Name()
+			username, _ := p.Username()
+			createTime, _ := p.CreateTime()
+			ppid, _ := p.Ppid()
+
+			cmdline := name
+			if rawCmd, err := p.CmdlineSlice(); err == nil && len(rawCmd) > 0 {
+				full := strings.Join(rawCmd, " ")
+				if len(full) > 120 {
+					full = full[:120]
+				}
+				cmdline = full
 			}
-			cmdline = full
+
+			info = procCachedInfo{
+				name:       name,
+				username:   username,
+				cmdline:    cmdline,
+				createTime: float64(createTime) / 1000.0,
+				ppid:       ppid,
+			}
+			s.cached[pid] = info
 		}
 
 		snaps = append(snaps, procSnapshot{
@@ -77,13 +93,13 @@ func collectProcesses(s *procState) map[string][]ProcessInfo {
 			mem: float64(memPct),
 			info: ProcessInfo{
 				PID:           pid,
-				Name:          name,
+				Name:          info.name,
 				CPUPercent:    round1(cpuPct),
 				MemoryPercent: round1(float64(memPct)),
-				Username:      username,
-				Cmdline:       cmdline,
-				CreateTime:    float64(createTime) / 1000.0, // ms → seconds
-				PPID:          ppid,
+				Username:      info.username,
+				Cmdline:       info.cmdline,
+				CreateTime:    info.createTime,
+				PPID:          info.ppid,
 				NumThreads:    threads,
 			},
 		})

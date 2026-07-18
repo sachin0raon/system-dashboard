@@ -6,10 +6,21 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 )
+
+// physicalCoreCount is read from /proc/cpuinfo exactly once.
+// Calling cpu.Counts(false) on every tick wasted a full /proc/cpuinfo parse each cycle.
+var physicalCoreCount = sync.OnceValue(func() int {
+	counts, err := cpu.Counts(false)
+	if err != nil || counts <= 0 {
+		return runtime.NumCPU()
+	}
+	return counts
+})
 
 func collectCPU(s *cpuState) CpuInfo {
 	// Single percpu=true call; derive aggregate from mean.
@@ -55,7 +66,7 @@ func collectCPU(s *cpuState) CpuInfo {
 		UsagePercent:      total,
 		PerCorePercent:    perCore,
 		FrequencyMHz:      readCurrentFreqMHz(),
-		CoreCount:         countPhysicalCores(),
+		CoreCount:         physicalCoreCount(),
 		ThreadCount:       runtime.NumCPU(),
 		CtxSwitchesPerSec: ctxPerSec,
 		InterruptsPerSec:  intrPerSec,
@@ -108,14 +119,4 @@ func readCurrentFreqMHz() float64 {
 		return 0
 	}
 	return khz / 1000.0
-}
-
-// countPhysicalCores reads /proc/cpuinfo and counts unique "core id" values
-// per physical package. Falls back to runtime.NumCPU() if parsing fails.
-func countPhysicalCores() int {
-	counts, err := cpu.Counts(false)
-	if err != nil || counts <= 0 {
-		return runtime.NumCPU()
-	}
-	return counts
 }

@@ -52,18 +52,36 @@ func (h *Hub) LastSnapshotJSON() []byte {
 }
 
 // BroadcastLoop runs forever; call it in a dedicated goroutine.
-// It skips metric collection entirely when no clients are connected.
+//
+// When clients are connected: collects and broadcasts at every tick (full rate).
+// When no clients: skips collection on 14 out of every 15 ticks (~30s at 2s
+// interval) to avoid burning CPU on the Pi when nobody is watching the dashboard.
+// The snapshot is still refreshed every 30s so the HTTP /api/metrics endpoint
+// doesn't serve data that is arbitrarily stale on first page load.
 func (h *Hub) BroadcastLoop(static *metrics.StaticInfo, state *metrics.State, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
+	// backgroundEvery controls how often to collect when idle.
+	// 15 ticks × 2s = 30s background refresh rate.
+	const backgroundEvery = 15
+	var tick uint64
+
 	for range ticker.C {
+		tick++
+
 		h.mu.RLock()
 		hasClients := len(h.connections) > 0
 		h.mu.RUnlock()
 
+		// Skip the expensive collection when no one is watching,
+		// except every backgroundEvery ticks to keep the snapshot warm.
+		if !hasClients && tick%backgroundEvery != 0 {
+			continue
+		}
+
 		_, data := metrics.Collect(static, state)
-		h.StoreSnapshot(metrics.SystemMetrics{}, data) // update cache even with no clients
+		h.StoreSnapshot(metrics.SystemMetrics{}, data)
 
 		if hasClients {
 			h.broadcast(data)
@@ -137,4 +155,3 @@ func (h *Hub) ConnectionCount() int {
 	defer h.mu.RUnlock()
 	return len(h.connections)
 }
-

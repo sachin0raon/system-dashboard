@@ -22,6 +22,12 @@ func collectNetwork(s *netState) NetworkInfo {
 		dt = now.Sub(s.prevTime).Seconds()
 	}
 
+	// Refresh IP cache every 60s (DHCP can change addresses, but rarely).
+	if now.After(s.ipExpiry) {
+		s.ipCache = make(map[string]*string, len(counters))
+		s.ipExpiry = now.Add(60 * time.Second)
+	}
+
 	ifaces := make([]NetworkInterface, 0, len(counters))
 	newPrev := make(map[string]netIOSnapshot, len(counters))
 
@@ -43,7 +49,20 @@ func collectNetwork(s *netState) NetworkInfo {
 			packetsRecv: c.PacketsRecv,
 		}
 
-		ip := getIPv4(c.Name)
+		// IP: use cache; populated at ipExpiry refresh above.
+		ip, ok := s.ipCache[c.Name]
+		if !ok {
+			ip = getIPv4(c.Name)
+			s.ipCache[c.Name] = ip
+		}
+
+		// Speed: read once and never re-read; link speed doesn't change at runtime.
+		speed, ok := s.speedCache[c.Name]
+		if !ok {
+			speed = ifaceSpeed(c.Name)
+			s.speedCache[c.Name] = speed
+		}
+
 		ifaces = append(ifaces, NetworkInterface{
 			Name:              c.Name,
 			BytesSentPerSec:   sentBPS,
@@ -54,7 +73,7 @@ func collectNetwork(s *netState) NetworkInfo {
 			PacketsRecvPerSec: recvPPS,
 			ErrorsTotal:       c.Errin + c.Errout,
 			DropsTotal:        c.Dropin + c.Dropout,
-			SpeedMbps:         ifaceSpeed(c.Name),
+			SpeedMbps:         speed,
 			IPAddress:         ip,
 		})
 	}

@@ -44,19 +44,43 @@ type netIOSnapshot struct {
 }
 
 type netState struct {
-	prev     map[string]netIOSnapshot
-	prevTime time.Time
+	prev       map[string]netIOSnapshot
+	prevTime   time.Time
+	// IP addresses are stable; refresh every 60s instead of every tick.
+	ipCache    map[string]*string
+	ipExpiry   time.Time
+	// Link speed never changes at runtime; cache permanently.
+	speedCache map[string]int
+}
+
+// procCachedInfo holds fields that are constant for the lifetime of a process.
+// Fetched once on first encounter; re-read only when the PID is new.
+type procCachedInfo struct {
+	name       string
+	username   string
+	cmdline    string
+	createTime float64 // unix seconds
+	ppid       int32
 }
 
 type procState struct {
-	// Reusing the same *process.Process object between ticks lets
-	// gopsutil track CPU time deltas internally via CPUPercent().
-	cache map[int32]*process.Process
+	// procs reuses the same *process.Process object across ticks so gopsutil
+	// can track CPU-time deltas internally via CPUPercent().
+	procs  map[int32]*process.Process
+	// cached holds fields that don't change for a running process.
+	cached map[int32]procCachedInfo
 }
 
 func NewState() *State {
 	return &State{
-		Net:  netState{prev: make(map[string]netIOSnapshot)},
-		Proc: procState{cache: make(map[int32]*process.Process)},
+		Net: netState{
+			prev:       make(map[string]netIOSnapshot),
+			ipCache:    make(map[string]*string),
+			speedCache: make(map[string]int),
+		},
+		Proc: procState{
+			procs:  make(map[int32]*process.Process),
+			cached: make(map[int32]procCachedInfo),
+		},
 	}
 }

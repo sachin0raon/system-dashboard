@@ -84,10 +84,6 @@ func readThermalZone(zone int) *float64 {
 }
 
 func readFanSpeed() *float64 {
-	fans, err := host.SensorsTemperatures() // gopsutil doesn't expose fans directly
-	_ = fans
-	_ = err
-	// Fan speed via /sys/class/hwmon/*/fan1_input
 	entries, err := readGlobFirst("/sys/class/hwmon/*/fan1_input")
 	if err != nil {
 		return nil
