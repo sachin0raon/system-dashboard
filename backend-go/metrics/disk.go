@@ -1,11 +1,39 @@
 package metrics
 
 import (
+	"os"
+	"path/filepath"
 	"syscall"
 	"time"
 
 	"github.com/shirou/gopsutil/v3/disk"
 )
+
+// hostRoot is /hostfs when that directory exists (i.e. the container has the
+// host root bind-mounted there).  When running natively it stays empty.
+// This matters because /proc:/proc:ro gives gopsutil the host partition list,
+// but syscall.Statfs on those mountpoints still hits the overlay2 root inside
+// the container.  Docker's overlay2 returns f_files=0 on many kernels, so
+// inode counts are always zero without this workaround.
+var hostRoot = func() string {
+	if _, err := os.Stat("/hostfs"); err == nil {
+		return "/hostfs"
+	}
+	return ""
+}()
+
+// resolvePath returns the path to use for syscall.Statfs.
+// When hostRoot is set, prepend it so we stat the real host filesystem
+// instead of the container's overlay mount.
+func resolvePath(mountpoint string) string {
+	if hostRoot == "" {
+		return mountpoint
+	}
+	if mountpoint == "/" {
+		return hostRoot
+	}
+	return filepath.Join(hostRoot, mountpoint)
+}
 
 func collectDisk(s *diskState) DiskInfo {
 	parts, err := disk.Partitions(false)
@@ -15,16 +43,18 @@ func collectDisk(s *diskState) DiskInfo {
 
 	partitions := make([]DiskPartition, 0, len(parts))
 	for _, p := range parts {
-		usage, err := disk.Usage(p.Mountpoint)
+		statPath := resolvePath(p.Mountpoint)
+
+		usage, err := disk.Usage(statPath)
 		if err != nil {
 			continue
 		}
 
-		inodesTotal, inodesUsed, inodesFree, inodesPercent := inodeStats(p.Mountpoint)
+		inodesTotal, inodesUsed, inodesFree, inodesPercent := inodeStats(statPath)
 
 		partitions = append(partitions, DiskPartition{
 			Device:        p.Device,
-			Mountpoint:    p.Mountpoint,
+			Mountpoint:    p.Mountpoint, // display the real mount path, not /hostfs/…
 			Fstype:        p.Fstype,
 			TotalBytes:    usage.Total,
 			UsedBytes:     usage.Used,
@@ -80,9 +110,9 @@ func collectDisk(s *diskState) DiskInfo {
 }
 
 // inodeStats uses syscall.Statfs (equivalent to Python's os.statvfs).
-func inodeStats(mountpoint string) (total, used, free uint64, percent float64) {
+func inodeStats(path string) (total, used, free uint64, percent float64) {
 	var stat syscall.Statfs_t
-	if err := syscall.Statfs(mountpoint, &stat); err != nil {
+	if err := syscall.Statfs(path, &stat); err != nil {
 		return
 	}
 	total = stat.Files
