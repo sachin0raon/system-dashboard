@@ -1,7 +1,7 @@
 # Pi 5 Dashboard — Docker Compose
 #
 # Usage:
-#   1. Copy backend/.env.example → backend/.env and set API_KEY
+#   1. Copy backend-go/.env.example → backend-go/.env and set API_KEY
 #   2. Run: docker compose up -d --build
 #   3. Open http://raspberrypi.local (or your Pi's IP)
 
@@ -12,7 +12,7 @@ services:
       dockerfile: Dockerfile
       args:
         # The frontend's VITE_API_KEY is baked in at build time.
-        # It must match the API_KEY in backend/.env
+        # It must match the API_KEY in backend-go/.env
         VITE_API_KEY: ${API_KEY}
     image: pi5-dashboard:latest
     container_name: pi5-dashboard
@@ -20,7 +20,7 @@ services:
     ports:
       - "80:80"
     env_file:
-      - backend/.env
+      - backend-go/.env
     # Host PID access lets psutil read accurate system metrics
     pid: host
     # Privileged access required for thermal sensors & full disk stats

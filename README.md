@@ -25,9 +25,9 @@ A beautiful, modern, glassmorphic system monitoring dashboard for Linux systems 
 ### 1. Create `.env`
 
 ```bash
-cp backend/.env.example backend/.env
+cp backend-go/.env.example backend-go/.env
 # Set a strong API_KEY
-nano backend/.env
+nano backend-go/.env
 ```
 
 `.env` format:
@@ -39,7 +39,7 @@ ALLOWED_ORIGINS=*
 ### 2. Build and run
 
 ```bash
-API_KEY=$(grep API_KEY backend/.env | cut -d= -f2) docker compose up -d --build
+API_KEY=$(grep API_KEY backend-go/.env | cut -d= -f2) docker compose up -d --build
 ```
 
 ### Alternative: Docker CLI
@@ -53,7 +53,7 @@ docker run -d \
   --name sys-dash \
   --restart unless-stopped \
   -p 80:80 \
-  --env-file backend/.env \
+  --env-file backend-go/.env \
   --pid host \
   -v /proc:/proc:ro \
   -v /sys:/sys:ro \
