@@ -30,10 +30,6 @@ services:
       # Mount /sys and /proc for accurate sensor + metric readings
       - /proc:/proc:ro
       - /sys:/sys:ro
-      # Read-only host root so the Go backend can statfs real ext4 partitions.
-      # Docker's overlay2 returns f_files=0, making inode counts always zero
-      # without this mount.  The backend detects /hostfs at startup.
-      - /:/hostfs:ro
       # Mount host journal for journalctl log access
       - /run/log/journal:/run/log/journal:ro
       - /var/log/journal:/var/log/journal:ro
