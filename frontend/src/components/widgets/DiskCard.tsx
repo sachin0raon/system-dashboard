@@ -123,13 +123,33 @@ export function DiskCard({ data }: DiskCardProps) {
           <div className="text-[10px] font-mono truncate text-cyan-400/90">{currentPartition.device}</div>
         </div>
         <div
-          className="rounded-xl px-3 py-2 flex flex-col justify-center"
+          className="rounded-xl px-3 py-2 flex flex-col justify-center gap-1.5"
           style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)' }}
         >
-          <CardLabel className="text-[9px] mb-0.5 text-cyan-400/60">Inodes Usage</CardLabel>
-          <div className="flex justify-between items-baseline">
-            <span className="text-[10px] font-mono text-cyan-400/90">{currentPartition.inodes_percent.toFixed(1)}%</span>
-            <span className="text-[8px] font-mono text-cyan-400/40">{(currentPartition.inodes_used / 1000).toFixed(1)}k / {(currentPartition.inodes_total / 1000).toFixed(1)}k</span>
+          <CardLabel className="text-[9px] text-cyan-400/60">Drive Info</CardLabel>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {currentPartition.device_type && (
+              <span
+                className="px-1.5 py-0.5 rounded-md text-[9px] font-mono font-semibold"
+                style={{
+                  background: 'rgba(139,92,246,0.12)',
+                  border: '1px solid rgba(139,92,246,0.25)',
+                  color: '#c4b5fd',
+                }}
+              >
+                {currentPartition.device_type}
+              </span>
+            )}
+            <span
+              className="px-1.5 py-0.5 rounded-md text-[9px] font-mono font-semibold"
+              style={
+                currentPartition.read_only
+                  ? { background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }
+                  : { background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#86efac' }
+              }
+            >
+              {currentPartition.read_only ? 'RO' : 'R/W'}
+            </span>
           </div>
         </div>
       </div>

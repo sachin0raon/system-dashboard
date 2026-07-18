@@ -31,10 +31,8 @@ export interface DiskPartition {
   used_bytes: number;
   free_bytes: number;
   percent: number;
-  inodes_percent: number;
-  inodes_total: number;
-  inodes_used: number;
-  inodes_free: number;
+  read_only: boolean;
+  device_type: string;
 }
 
 export interface DiskInfo {

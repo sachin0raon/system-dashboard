@@ -32,8 +32,11 @@ type diskIOSnapshot struct {
 }
 
 type diskState struct {
-	prev     diskIOSnapshot
-	prevTime time.Time
+	prev        diskIOSnapshot
+	prevTime    time.Time
+	// deviceTypes caches the detected label per device path (NVMe/SD Card/SSD/HDD/USB).
+	// The type never changes at runtime so we only read sysfs once per device.
+	deviceTypes map[string]string
 }
 
 type netIOSnapshot struct {
@@ -73,6 +76,7 @@ type procState struct {
 
 func NewState() *State {
 	return &State{
+		Disk: diskState{deviceTypes: make(map[string]string)},
 		Net: netState{
 			prev:       make(map[string]netIOSnapshot),
 			ipCache:    make(map[string]*string),

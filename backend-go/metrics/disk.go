@@ -1,7 +1,11 @@
 package metrics
 
 import (
-	"syscall"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/shirou/gopsutil/v3/disk"
@@ -13,6 +17,9 @@ func collectDisk(s *diskState) DiskInfo {
 		parts = nil
 	}
 
+	// Parse /proc/mounts once per tick to determine read-only status for all partitions.
+	roMap := mountROMap()
+
 	partitions := make([]DiskPartition, 0, len(parts))
 	for _, p := range parts {
 		usage, err := disk.Usage(p.Mountpoint)
@@ -20,20 +27,23 @@ func collectDisk(s *diskState) DiskInfo {
 			continue
 		}
 
-		inodesTotal, inodesUsed, inodesFree, inodesPercent := inodeStats(p.Mountpoint)
+		// Device type is permanent; detect once and cache in diskState.
+		devType, ok := s.deviceTypes[p.Device]
+		if !ok {
+			devType = detectDeviceType(p.Device)
+			s.deviceTypes[p.Device] = devType
+		}
 
 		partitions = append(partitions, DiskPartition{
-			Device:        p.Device,
-			Mountpoint:    p.Mountpoint,
-			Fstype:        p.Fstype,
-			TotalBytes:    usage.Total,
-			UsedBytes:     usage.Used,
-			FreeBytes:     usage.Free,
-			Percent:       usage.UsedPercent,
-			InodesPercent: inodesPercent,
-			InodesTotal:   inodesTotal,
-			InodesUsed:    inodesUsed,
-			InodesFree:    inodesFree,
+			Device:     p.Device,
+			Mountpoint: p.Mountpoint,
+			Fstype:     p.Fstype,
+			TotalBytes: usage.Total,
+			UsedBytes:  usage.Used,
+			FreeBytes:  usage.Free,
+			Percent:    usage.UsedPercent,
+			ReadOnly:   roMap[p.Mountpoint],
+			DeviceType: devType,
 		})
 	}
 
@@ -79,19 +89,87 @@ func collectDisk(s *diskState) DiskInfo {
 	}
 }
 
-// inodeStats uses syscall.Statfs (equivalent to Python's os.statvfs).
-func inodeStats(mountpoint string) (total, used, free uint64, percent float64) {
-	var stat syscall.Statfs_t
-	if err := syscall.Statfs(mountpoint, &stat); err != nil {
-		return
+// mountROMap parses /proc/mounts and returns a map of mountpoint → read-only.
+// /proc is bind-mounted from the host so this reflects the actual host state.
+func mountROMap() map[string]bool {
+	data, err := os.ReadFile("/proc/mounts")
+	if err != nil {
+		return nil
 	}
-	total = stat.Files
-	free = stat.Ffree
-	if total >= free {
-		used = total - free
+	m := make(map[string]bool)
+	for _, line := range strings.Split(string(data), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 4 {
+			continue
+		}
+		ro := false
+		for _, opt := range strings.Split(fields[3], ",") {
+			if opt == "ro" {
+				ro = true
+				break
+			}
+		}
+		m[fields[1]] = ro
 	}
-	if total > 0 {
-		percent = float64(used) / float64(total) * 100
+	return m
+}
+
+// detectDeviceType classifies a block device by name and sysfs attributes.
+// Returns one of: "NVMe", "SD Card", "SSD", "HDD", "USB", or "" for unknown.
+func detectDeviceType(device string) string {
+	blk := blockDevName(device)
+	switch {
+	case strings.HasPrefix(blk, "nvme"):
+		return "NVMe"
+	case strings.HasPrefix(blk, "mmcblk"):
+		return "SD Card"
+	case strings.HasPrefix(blk, "sd"), strings.HasPrefix(blk, "hd"):
+		removable := readSysBlockInt(blk, "removable")
+		if removable == 1 {
+			return "USB"
+		}
+		if readSysBlockInt(blk, "queue/rotational") == 0 {
+			return "SSD"
+		}
+		return "HDD"
 	}
-	return
+	return ""
+}
+
+// blockDevName strips the partition suffix from a device path.
+// /dev/nvme0n1p2 → nvme0n1, /dev/mmcblk0p2 → mmcblk0, /dev/sda1 → sda
+func blockDevName(device string) string {
+	name := filepath.Base(device)
+	switch {
+	case strings.HasPrefix(name, "nvme"):
+		// nvme0n1p2: partition component starts at the last 'p'
+		if i := strings.LastIndexByte(name, 'p'); i > 4 {
+			return name[:i]
+		}
+	case strings.HasPrefix(name, "mmcblk"):
+		// mmcblk0p2: partition component starts at the last 'p'
+		if i := strings.LastIndexByte(name, 'p'); i > 5 {
+			return name[:i]
+		}
+	default:
+		// sda1, hdb2: strip trailing digits
+		i := len(name)
+		for i > 0 && name[i-1] >= '0' && name[i-1] <= '9' {
+			i--
+		}
+		return name[:i]
+	}
+	return name
+}
+
+func readSysBlockInt(blk, file string) int {
+	data, err := os.ReadFile(fmt.Sprintf("/sys/block/%s/%s", blk, file))
+	if err != nil {
+		return -1
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		return -1
+	}
+	return n
 }
