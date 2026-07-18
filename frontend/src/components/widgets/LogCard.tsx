@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ScrollText, RefreshCw, Search, ArrowUpDown } from 'lucide-react';
+import { ScrollText, RefreshCw, Search, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
 import { CardLabel } from '../ui/StatValue';
 import { useLogServices, useLogEntries } from '../../api/logs';
@@ -166,17 +166,20 @@ export function LogCard() {
       <div className="flex flex-wrap gap-3 items-center">
         {/* Service dropdown + its own refresh */}
         <div className="flex items-center gap-2 flex-1 min-w-[180px]">
-          <select
-            value={selectedUnit}
-            onChange={(e) => setSelectedUnit(e.target.value)}
-            disabled={servicesQuery.isFetching}
-            className="flex-1 bg-black/20 text-xs font-mono rounded-lg px-2 py-1.5 text-zinc-200 border border-white/10 outline-none cursor-pointer focus:border-white/30 min-w-0 disabled:opacity-50"
-          >
-            <option value="">Select service…</option>
-            {services.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+          <div className="relative flex-1 min-w-0">
+            <select
+              value={selectedUnit}
+              onChange={(e) => setSelectedUnit(e.target.value)}
+              disabled={servicesQuery.isFetching}
+              className="w-full appearance-none bg-black/20 text-xs font-mono rounded-lg pl-2 pr-6 py-1.5 text-zinc-200 border border-white/10 outline-none cursor-pointer focus:border-white/30 disabled:opacity-50"
+            >
+              <option value="">Select service…</option>
+              {services.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted pointer-events-none" />
+          </div>
           <button
             onClick={() => servicesQuery.refetch()}
             disabled={servicesQuery.isFetching}
@@ -190,15 +193,18 @@ export function LogCard() {
         </div>
 
         {/* Line count */}
-        <select
-          value={lines}
-          onChange={(e) => setLines(Number(e.target.value) as 50 | 100 | 200 | 500)}
-          className="bg-black/20 text-xs font-mono rounded-lg px-2 py-1.5 text-zinc-200 border border-white/10 outline-none cursor-pointer focus:border-white/30"
-        >
-          {LINE_OPTIONS.map((n) => (
-            <option key={n} value={n}>{n} lines</option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            value={lines}
+            onChange={(e) => setLines(Number(e.target.value) as 50 | 100 | 200 | 500)}
+            className="appearance-none bg-black/20 text-xs font-mono rounded-lg pl-2 pr-6 py-1.5 text-zinc-200 border border-white/10 outline-none cursor-pointer focus:border-white/30"
+          >
+            {LINE_OPTIONS.map((n) => (
+              <option key={n} value={n}>{n} lines</option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted pointer-events-none" />
+        </div>
 
         {/* Refresh logs */}
         <button
@@ -335,7 +341,7 @@ export function LogCard() {
 
                     {/* Message */}
                     <td className="px-4 py-2 font-mono text-[11px] text-white/55 max-w-0 w-full">
-                      <span className="block truncate" title={entry.message}>
+                      <span className="block break-words whitespace-pre-wrap leading-relaxed">
                         <Highlight text={entry.message} search={searchText} />
                       </span>
                     </td>
