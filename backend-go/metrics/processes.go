@@ -1,14 +1,17 @@
 package metrics
 
 import (
+	"container/heap"
 	"math"
-	"sort"
 	"strings"
 
 	"github.com/shirou/gopsutil/v3/process"
 )
 
-const processLimit = 10
+const (
+	processLimit     = 10
+	procCollectEvery = 3 // full /proc scan every 3 ticks (~6s at 2s interval)
+)
 
 type procSnapshot struct {
 	info ProcessInfo
@@ -16,10 +19,18 @@ type procSnapshot struct {
 	mem  float64
 }
 
+// collectProcesses returns the top-N processes by CPU and memory.
+// Full collection runs every procCollectEvery ticks; cached results are returned
+// in between, cutting ~66% of per-tick /proc file reads.
 func collectProcesses(s *procState) map[string][]ProcessInfo {
+	s.tickCount++
+	if s.tickCount%procCollectEvery != 0 {
+		return s.lastResult
+	}
+
 	pids, err := process.Pids()
 	if err != nil {
-		return map[string][]ProcessInfo{"cpu": {}, "memory": {}}
+		return s.lastResult
 	}
 
 	// Remove dead PIDs from both caches.
@@ -39,7 +50,6 @@ func collectProcesses(s *procState) map[string][]ProcessInfo {
 	for _, pid := range pids {
 		p, ok := s.procs[pid]
 		if !ok {
-			var err error
 			p, err = process.NewProcess(pid)
 			if err != nil {
 				continue
@@ -47,7 +57,6 @@ func collectProcesses(s *procState) map[string][]ProcessInfo {
 			s.procs[pid] = p
 		}
 
-		// CPUPercent and MemoryPercent are the only fields that change every tick.
 		cpuPct, err := p.CPUPercent()
 		if err != nil {
 			continue
@@ -56,12 +65,9 @@ func collectProcesses(s *procState) map[string][]ProcessInfo {
 		if err != nil {
 			continue
 		}
-
-		// NumThreads can change; read it every tick (reads /proc/<pid>/status).
 		threads, _ := p.NumThreads()
 
-		// All other fields are constant for the lifetime of a process.
-		// Fetch once and cache; skip the /proc reads on subsequent ticks.
+		// Static fields: fetch once per PID lifetime, cache forever.
 		info, cached := s.cached[pid]
 		if !cached {
 			name, _ := p.Name()
@@ -70,7 +76,7 @@ func collectProcesses(s *procState) map[string][]ProcessInfo {
 			ppid, _ := p.Ppid()
 
 			cmdline := name
-			if rawCmd, err := p.CmdlineSlice(); err == nil && len(rawCmd) > 0 {
+			if rawCmd, err2 := p.CmdlineSlice(); err2 == nil && len(rawCmd) > 0 {
 				full := strings.Join(rawCmd, " ")
 				if len(full) > 120 {
 					full = full[:120]
@@ -105,26 +111,62 @@ func collectProcesses(s *procState) map[string][]ProcessInfo {
 		})
 	}
 
-	// Top by CPU
-	sort.Slice(snaps, func(i, j int) bool { return snaps[i].cpu > snaps[j].cpu })
-	topCPU := snapToInfoSlice(snaps, processLimit)
-
-	// Top by Memory
-	sort.Slice(snaps, func(i, j int) bool { return snaps[i].mem > snaps[j].mem })
-	topMem := snapToInfoSlice(snaps, processLimit)
-
-	return map[string][]ProcessInfo{"cpu": topCPU, "memory": topMem}
+	result := map[string][]ProcessInfo{
+		"cpu":    topNSnaps(snaps, processLimit, byCPU),
+		"memory": topNSnaps(snaps, processLimit, byMem),
+	}
+	s.lastResult = result
+	return result
 }
 
-func snapToInfoSlice(snaps []procSnapshot, limit int) []ProcessInfo {
-	if limit > len(snaps) {
-		limit = len(snaps)
+func byCPU(s procSnapshot) float64 { return s.cpu }
+func byMem(s procSnapshot) float64 { return s.mem }
+
+// topNSnaps selects the top n snapshots by key score in O(N log n) using a
+// min-heap, avoiding a full O(N log N) sort of all processes.
+func topNSnaps(snaps []procSnapshot, n int, key func(procSnapshot) float64) []ProcessInfo {
+	h := &procMinHeap{key: key}
+	heap.Init(h)
+
+	for i := range snaps {
+		v := key(snaps[i])
+		if len(h.entries) < n {
+			heap.Push(h, procHeapEntry{val: v, idx: i})
+		} else if v > h.entries[0].val {
+			heap.Pop(h)
+			heap.Push(h, procHeapEntry{val: v, idx: i})
+		}
 	}
-	out := make([]ProcessInfo, limit)
-	for i := range out {
-		out[i] = snaps[i].info
+
+	// Pop ascending; fill result slice back-to-front for descending order.
+	result := make([]ProcessInfo, len(h.entries))
+	for i := len(result) - 1; i >= 0; i-- {
+		entry := heap.Pop(h).(procHeapEntry)
+		result[i] = snaps[entry.idx].info
 	}
-	return out
+	return result
+}
+
+type procHeapEntry struct {
+	val float64
+	idx int
+}
+
+type procMinHeap struct {
+	entries []procHeapEntry
+	key     func(procSnapshot) float64
+}
+
+func (h procMinHeap) Len() int            { return len(h.entries) }
+func (h procMinHeap) Less(i, j int) bool  { return h.entries[i].val < h.entries[j].val }
+func (h procMinHeap) Swap(i, j int)       { h.entries[i], h.entries[j] = h.entries[j], h.entries[i] }
+func (h *procMinHeap) Push(x any)         { h.entries = append(h.entries, x.(procHeapEntry)) }
+func (h *procMinHeap) Pop() any {
+	old := h.entries
+	n := len(old)
+	x := old[n-1]
+	h.entries = old[:n-1]
+	return x
 }
 
 func round1(v float64) float64 {

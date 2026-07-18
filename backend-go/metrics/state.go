@@ -69,9 +69,15 @@ type procCachedInfo struct {
 type procState struct {
 	// procs reuses the same *process.Process object across ticks so gopsutil
 	// can track CPU-time deltas internally via CPUPercent().
-	procs  map[int32]*process.Process
+	procs map[int32]*process.Process
 	// cached holds fields that don't change for a running process.
 	cached map[int32]procCachedInfo
+
+	// tickCount and lastResult implement a collection cadence: we run the full
+	// /proc scan every procCollectEvery ticks and return cached data in between.
+	// This cuts ~450 file reads/tick to ~150 reads/tick on average.
+	tickCount  uint8
+	lastResult map[string][]ProcessInfo
 }
 
 func NewState() *State {
@@ -83,8 +89,9 @@ func NewState() *State {
 			speedCache: make(map[string]int),
 		},
 		Proc: procState{
-			procs:  make(map[int32]*process.Process),
-			cached: make(map[int32]procCachedInfo),
+			procs:      make(map[int32]*process.Process),
+			cached:     make(map[int32]procCachedInfo),
+			lastResult: map[string][]ProcessInfo{"cpu": {}, "memory": {}},
 		},
 	}
 }
