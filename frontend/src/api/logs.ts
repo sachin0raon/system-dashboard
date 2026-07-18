@@ -50,8 +50,9 @@ export function useLogServices(source: 'running' | 'all') {
   });
 }
 
-// enabled:false — only fetches when refetch() is called explicitly from the Refresh button.
-// Each unique set of filters gets its own cache entry via the queryKey.
+// Auto-fetches when a unit is selected (enabled: !!filters.unit).
+// Any filter change (unit, lines, priority) updates the queryKey and triggers a new fetch.
+// staleTime:Infinity means no background refetches — only queryKey changes or manual refetch().
 export function useLogEntries(filters: LogFilters) {
   return useQuery<LogEntry[], Error>({
     queryKey: ['log-entries', filters],
@@ -63,7 +64,8 @@ export function useLogEntries(filters: LogFilters) {
       const data = await apiFetch<{ entries: LogEntry[] }>(`/api/logs?${params}`);
       return data.entries ?? [];
     },
-    enabled: false,
+    enabled: !!filters.unit,
+    staleTime: Infinity,
     retry: false,
   });
 }

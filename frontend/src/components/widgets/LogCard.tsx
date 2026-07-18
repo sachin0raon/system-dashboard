@@ -245,7 +245,7 @@ export function LogCard() {
           <div className="px-4 py-10 text-center text-muted text-xs">
             {logsQuery.isFetching
               ? 'Loading…'
-              : 'Select a service and press Refresh Logs'}
+              : 'Select a service to view logs'}
           </div>
         ) : displayedEntries.length === 0 ? (
           <div className="px-4 py-10 text-center text-muted text-xs">
