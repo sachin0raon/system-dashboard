@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { ScrollText, RefreshCw, Search } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { ScrollText, RefreshCw, Search, ArrowUpDown } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
 import { CardLabel } from '../ui/StatValue';
 import { useLogServices, useLogEntries } from '../../api/logs';
@@ -65,30 +65,42 @@ export function LogCard() {
   const [lines, setLines] = useState<50 | 100 | 200 | 500>(100);
   const [activeLevels, setActiveLevels] = useState<Set<number>>(new Set(ALL_LEVEL_SET));
   const [searchText, setSearchText] = useState('');
-
-  // If all 8 or zero levels are selected, omit the priority param (fetch everything).
-  // Otherwise send Math.max(...activeLevels): journalctl -p N means "levels 0 through N".
-  const priorityParam = useMemo<number | undefined>(() => {
-    if (activeLevels.size === 0 || activeLevels.size === 8) return undefined;
-    return Math.max(...activeLevels);
-  }, [activeLevels]);
+  const [sortDesc, setSortDesc] = useState(true);
 
   const servicesQuery = useLogServices(source);
-  const logsQuery = useLogEntries({ unit: selectedUnit, lines, priority: priorityParam });
+  // No priority param sent to the API — journalctl -p N means "levels 0 through N"
+  // (a range, not a set), so individual level toggles can't map cleanly to the API.
+  // Fetch all levels and filter client-side for instant, accurate toggle behaviour.
+  const logsQuery = useLogEntries({ unit: selectedUnit, lines });
+
+  // Reset to newest-first whenever fresh data arrives (initial load, manual refresh,
+  // or filter change). dataUpdatedAt is 0 until the first successful fetch.
+  useEffect(() => {
+    if (logsQuery.dataUpdatedAt > 0) setSortDesc(true);
+  }, [logsQuery.dataUpdatedAt]);
 
   const services = servicesQuery.data ?? [];
 
-  // Client-side filter — runs on every keystroke over already-fetched data.
+  // Client-side filter + sort: priority toggles, text search, and time order.
+  // None of these require a refetch — all operate on the already-loaded entries.
   const displayedEntries = useMemo<LogEntry[]>(() => {
     const entries = logsQuery.data ?? [];
-    if (!searchText.trim()) return entries;
-    const lower = searchText.toLowerCase();
-    return entries.filter(
-      (e) =>
+    const lower = searchText.trim().toLowerCase();
+    const filtered = entries.filter((e) => {
+      if (!activeLevels.has(e.priority)) return false;
+      if (!lower) return true;
+      return (
         e.message.toLowerCase().includes(lower) ||
         (e.unit?.toLowerCase().includes(lower) ?? false)
+      );
+    });
+    // ISO timestamps are lexicographically sortable — no Date parsing needed.
+    return filtered.sort((a, b) =>
+      sortDesc
+        ? b.timestamp.localeCompare(a.timestamp)
+        : a.timestamp.localeCompare(b.timestamp)
     );
-  }, [logsQuery.data, searchText]);
+  }, [logsQuery.data, activeLevels, searchText, sortDesc]);
 
   function handleSourceToggle(s: 'running' | 'all') {
     setSource(s);
@@ -234,7 +246,10 @@ export function LogCard() {
       </div>
 
       {/* ── Log table ───────────────────────────────────────────── */}
-      <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[rgba(0,0,0,0.2)] backdrop-blur-md">
+      <div
+        className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[rgba(0,0,0,0.2)] backdrop-blur-md transition-opacity duration-200"
+        style={{ opacity: logsQuery.isFetching && logsQuery.data ? 0.5 : 1 }}
+      >
         {logsQuery.isError ? (
           <div className="px-4 py-10 text-center">
             <p className="text-xs font-mono" style={{ color: 'var(--color-danger)' }}>
@@ -257,7 +272,16 @@ export function LogCard() {
           <table className="w-full text-xs text-left border-collapse">
             <thead>
               <tr className="bg-white/5 border-b border-[var(--color-border)]">
-                <th className="px-4 py-2.5 font-semibold uppercase tracking-wider text-[10px] text-muted whitespace-nowrap">Time</th>
+                <th className="px-4 py-2.5 whitespace-nowrap">
+                  <button
+                    onClick={() => setSortDesc((d) => !d)}
+                    className="flex items-center gap-1 font-semibold uppercase tracking-wider text-[10px] text-muted hover:text-secondary transition-colors"
+                    title={sortDesc ? 'Newest first — click for oldest first' : 'Oldest first — click for newest first'}
+                  >
+                    Time
+                    <ArrowUpDown className="w-2.5 h-2.5 opacity-60" />
+                  </button>
+                </th>
                 <th className="px-4 py-2.5 font-semibold uppercase tracking-wider text-[10px] text-muted whitespace-nowrap">Unit</th>
                 <th className="px-4 py-2.5 font-semibold uppercase tracking-wider text-[10px] text-muted whitespace-nowrap">Level</th>
                 <th className="px-4 py-2.5 font-semibold uppercase tracking-wider text-[10px] text-muted">Message</th>

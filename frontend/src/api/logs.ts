@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 
 const API_KEY = import.meta.env.VITE_API_KEY as string | undefined;
 
@@ -67,5 +67,6 @@ export function useLogEntries(filters: LogFilters) {
     enabled: !!filters.unit,
     staleTime: Infinity,
     retry: false,
+    placeholderData: keepPreviousData,
   });
 }
